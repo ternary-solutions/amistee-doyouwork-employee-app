@@ -14,13 +14,11 @@ import {
 import { authService } from "@/services/auth";
 import { fetchMe, login, loginWithOTP } from "@/utils/api";
 import { tokenStorage } from "@/utils/tokenStorage";
-import * as Sentry from "@sentry/react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Button,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -215,12 +213,6 @@ export default function LoginScreen() {
 
               {!usePhoneLogin ? (
                 <>
-                  <Button
-                    title="Try!"
-                    onPress={() => {
-                      Sentry.captureException(new Error("First error"));
-                    }}
-                  />
                   <Text style={styles.label}>Email or Phone Number</Text>
                   <TextInput
                     style={styles.input}

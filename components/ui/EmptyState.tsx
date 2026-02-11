@@ -1,6 +1,7 @@
 import { mutedForeground, spacing, typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
+import { AnimatedFadeIn } from './AnimatedFadeIn';
 import { Button } from './Button';
 
 type EmptyStateProps = {
@@ -16,7 +17,8 @@ type EmptyStateProps = {
 
 export function EmptyState({ message, icon, action }: EmptyStateProps) {
   return (
-    <View style={styles.wrapper}>
+    <AnimatedFadeIn duration={220}>
+      <View style={styles.wrapper}>
       {icon && (
         <View style={styles.iconWrap}>
           <Ionicons name={icon} size={48} color={mutedForeground} />
@@ -33,7 +35,8 @@ export function EmptyState({ message, icon, action }: EmptyStateProps) {
           {action.label}
         </Button>
       )}
-    </View>
+      </View>
+    </AnimatedFadeIn>
   );
 }
 

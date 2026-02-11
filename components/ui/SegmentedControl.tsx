@@ -1,6 +1,6 @@
 import { card, foreground, muted, mutedForeground, radius, spacing } from '@/constants/theme';
 import { hapticSelection } from '@/utils/haptics';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LayoutAnimation, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export interface SegmentedOption {
   value: string;
@@ -23,6 +23,7 @@ export function SegmentedControl({ options, value, onChange }: SegmentedControlP
             key={opt.value}
             style={[styles.btn, isActive && styles.btnActive]}
             onPress={() => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               hapticSelection();
               onChange(opt.value);
             }}

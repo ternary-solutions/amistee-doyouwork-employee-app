@@ -3,6 +3,7 @@ import { primary, primaryDark, primaryForeground } from '@/constants/theme';
 import { hapticImpact } from '@/utils/haptics';
 import { useMainStore } from '@/store/main';
 import { LocationSwitcher } from '@/components/layout/LocationSwitcher';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { getMediaUrl, logout } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
@@ -81,13 +82,13 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
               <Text style={styles.profileName} numberOfLines={1}>
                 {fullName || 'Account'}
               </Text>
-              <Pressable
-                style={({ pressed }) => [styles.myAccountBtn, pressed && styles.pressed]}
+              <AnimatedPressable
+                style={styles.myAccountBtn}
                 onPress={handleMyAccount}
               >
                 <Text style={styles.myAccountBtnText}>My Account</Text>
                 <Ionicons name="chevron-forward" size={14} color={primaryForeground} />
-              </Pressable>
+              </AnimatedPressable>
             </View>
           </View>
         </View>
@@ -102,13 +103,9 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
               {group.items.map((item) => {
                 const isActive = currentRouteName === item.name;
                 return (
-                  <Pressable
+                  <AnimatedPressable
                     key={item.name}
-                    style={({ pressed }) => [
-                      styles.item,
-                      isActive && styles.itemActive,
-                      pressed && styles.pressed,
-                    ]}
+                    style={[styles.item, isActive && styles.itemActive]}
                     onPress={() => handleNavigate(item.name)}
                   >
                     <View style={styles.itemLeft}>
@@ -127,7 +124,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
                       size={20}
                       color={isActive ? primaryForeground : 'rgba(255,255,255,0.6)'}
                     />
-                  </Pressable>
+                  </AnimatedPressable>
                 );
               })}
             </View>
@@ -138,12 +135,8 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
         {/* Notifications - drawer item for notifications screen */}
         <View style={styles.group}>
           <Text style={styles.groupLabel}>APP</Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.item,
-              currentRouteName === 'notifications' && styles.itemActive,
-              pressed && styles.pressed,
-            ]}
+          <AnimatedPressable
+            style={[styles.item, currentRouteName === 'notifications' && styles.itemActive]}
             onPress={() => handleNavigate('notifications')}
           >
             <View style={styles.itemLeft}>
@@ -175,7 +168,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
                   : 'rgba(255,255,255,0.6)'
               }
             />
-          </Pressable>
+          </AnimatedPressable>
         </View>
 
         {/* Client badge */}
@@ -185,8 +178,8 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
         </View>
 
         {/* Sign out */}
-        <Pressable
-            style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
+        <AnimatedPressable
+            style={styles.signOutBtn}
             onPress={async () => {
               hapticImpact();
               await handleSignOut();
@@ -194,7 +187,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
         >
           <Ionicons name="log-out-outline" size={20} color={primaryForeground} />
           <Text style={styles.signOutText}>Sign Out</Text>
-        </Pressable>
+        </AnimatedPressable>
       </DrawerContentScrollView>
     </LinearGradient>
   );

@@ -110,8 +110,14 @@ class PushNotificationService {
       });
       this.tokenRegistered = true;
       this.currentToken = token;
-    } catch (error) {
-      console.error('[PushNotifications] Error registering token:', error);
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number; data?: unknown } };
+      const msg = err.response?.data && typeof err.response.data === 'object' && 'message' in err.response.data
+        ? (err.response.data as { message: string }).message
+        : err.response?.status
+          ? `HTTP ${err.response.status}`
+          : String(error);
+      console.error('[PushNotifications] Error registering token:', msg);
       this.tokenRegistered = false;
       this.currentToken = null;
     }

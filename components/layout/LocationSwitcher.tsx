@@ -13,6 +13,11 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 export function LocationSwitcher() {
   const locationIds = useMainStore((s) => s.locationIds);
@@ -22,6 +27,7 @@ export function LocationSwitcher() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const scale = useSharedValue(0.96);
 
   const loadLocations = useCallback(async () => {
     if (locationIds.length === 0) return;
@@ -45,6 +51,18 @@ export function LocationSwitcher() {
   }, [locationIds.length, loadLocations]);
 
   const currentLocation = locations.find((l) => l.id === currentLocationId);
+
+  useEffect(() => {
+    if (modalVisible) {
+      scale.value = withTiming(1, { duration: 200 });
+    } else {
+      scale.value = 0.96;
+    }
+  }, [modalVisible, scale]);
+
+  const animatedContentStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   if (locationIds.length <= 1) return null;
 
@@ -78,7 +96,8 @@ export function LocationSwitcher() {
           style={styles.modalOverlay}
           onPress={() => setModalVisible(false)}
         >
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <Animated.View style={[styles.modalContent, animatedContentStyle]}>
             <Text style={styles.modalTitle}>Select Location</Text>
             {loading ? (
               <View style={styles.loader}>
@@ -119,6 +138,7 @@ export function LocationSwitcher() {
             >
               <Text style={styles.cancelBtnText}>Cancel</Text>
             </Pressable>
+            </Animated.View>
           </Pressable>
         </Pressable>
       </Modal>

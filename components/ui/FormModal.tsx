@@ -1,7 +1,8 @@
 import { border, card, foreground, primary, primaryForeground, radius, spacing, typography } from '@/constants/theme';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCallback, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
 
 type FormModalProps = {
   visible: boolean;
@@ -65,27 +66,23 @@ export function FormModal({
           {children}
         </BottomSheetScrollView>
         <View style={styles.actions}>
-          <Pressable
-            style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.8 }]}
+          <AnimatedPressable
+            style={styles.cancelBtn}
             onPress={onClose}
             accessibilityLabel="Cancel"
             accessibilityRole="button"
           >
             <Text style={styles.cancelBtnText}>Cancel</Text>
-          </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.submitBtn,
-              disabled && styles.submitBtnDisabled,
-              !disabled && pressed && { opacity: 0.8 },
-            ]}
+          </AnimatedPressable>
+          <AnimatedPressable
+            style={[styles.submitBtn, disabled && styles.submitBtnDisabled]}
             onPress={onSubmit}
             disabled={disabled}
             accessibilityLabel={submitting ? 'Submitting' : submitLabel}
             accessibilityRole="button"
           >
             <Text style={styles.submitBtnText}>{submitting ? 'Submitting...' : submitLabel}</Text>
-          </Pressable>
+          </AnimatedPressable>
         </View>
       </View>
     </BottomSheetModal>

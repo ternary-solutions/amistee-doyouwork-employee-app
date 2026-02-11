@@ -138,18 +138,16 @@ export default function ClothingScreen() {
             <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
           }
           renderItem={({ item }) => (
-            <Pressable
-              style={styles.cardWrap}
-              onPress={() => router.push(`/(app)/clothing/${item.id}`)}
-            >
+            <View style={styles.cardWrap}>
               <ListCard
                 title={item.clothing_type_name ?? 'Clothing'}
                 meta={[`Qty: ${item.quantity} · Size: ${item.size}`]}
                 badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? mutedForeground }}
+                onPress={() => router.push(`/(app)/clothing/${item.id}`)}
               >
                 {item.reason ? <Text style={styles.details} numberOfLines={2}>{item.reason}</Text> : null}
               </ListCard>
-            </Pressable>
+            </View>
           )}
         />
       )}

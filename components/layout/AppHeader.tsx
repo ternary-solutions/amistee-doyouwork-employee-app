@@ -8,7 +8,7 @@ import { getMediaUrl } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import {
     Pressable, Image as RNImage, StyleSheet,
     Text,
@@ -42,6 +42,23 @@ type AppHeaderProps = HeaderProps & {
   };
 };
 
+/** Get the parent path for back navigation.
+ * e.g. /(app)/vehicles/123 -> /(app)/vehicles
+ *      /(app)/vehicles/123/requests/456 -> /(app)/vehicles/123 */
+function getParentPath(pathname: string): string | null {
+  const segments = pathname.split('/').filter(Boolean);
+  // Need at least (app) + section + detail - e.g. ["(app)", "vehicles", "123"]
+  if (segments.length <= 2) return null;
+  // Handle nested .../requests/[id] -> go back to parent resource (e.g. vehicles/123)
+  if (segments.length >= 2 && segments[segments.length - 2] === 'requests') {
+    segments.pop();
+    segments.pop();
+  } else {
+    segments.pop();
+  }
+  return '/' + segments.join('/');
+}
+
 export function AppHeader({
   navigation,
   showBack: showBackProp,
@@ -50,11 +67,12 @@ export function AppHeader({
   headerAction,
 }: AppHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const me = useMainStore((state) => state.me);
 
   const canGoBack = navigation.canGoBack();
-  const showBack = showBackProp ?? canGoBack;
+  const showBack = typeof showBackProp === 'boolean' ? showBackProp : canGoBack;
 
   const openDrawer = () => {
     const drawer = 'getParent' in navigation ? (navigation as { getParent: () => { openDrawer?: () => void } | undefined }).getParent() : null;
@@ -65,6 +83,17 @@ export function AppHeader({
   };
 
   const goBack = () => {
+    // When we explicitly show the back button (detail screens), always navigate to the
+    // parent path. Never use navigation.goBack() or router.back() as they can target
+    // the wrong navigator (Drawer) and incorrectly take us to the dashboard.
+    if (showBack) {
+      const parent = getParentPath(pathname);
+      if (parent) {
+        router.replace(parent as `/(app)/${string}`);
+        return;
+      }
+    }
+    // Fallback for screens where showBack was derived from canGoBack
     if (canGoBack) navigation.goBack();
     else router.back();
   };

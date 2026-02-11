@@ -142,7 +142,6 @@ const tintColorDark = '#fff';
 export const Colors = {
   light: {
     text: foreground,
-    background,
     tint: tintColorLight,
     icon: mutedForeground,
     tabIconDefault: mutedForeground,

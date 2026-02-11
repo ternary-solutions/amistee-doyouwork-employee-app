@@ -1,3 +1,4 @@
+import { AnimatedFadeIn } from '@/components/ui/AnimatedFadeIn';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
@@ -196,7 +197,8 @@ export default function SpiffsScreen() {
 
   return (
     <>
-      {showSummaryCard && (
+      <AnimatedFadeIn style={{ flex: 1 }} duration={280}>
+        {showSummaryCard && (
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Total earned (Approved)</Text>
@@ -228,22 +230,23 @@ export default function SpiffsScreen() {
           keyExtractor={(s) => s.id}
           style={{ backgroundColor: background }}
           contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.cardWrap}
-              onPress={() => router.push(`/(app)/spiffs/${item.id}`)}
-            >
-              <ListCard
-                title={item.spiff_type?.name ?? 'Spiff'}
-                meta={[`${new Date(item.spiff_date).toLocaleDateString()} · $${item.amount}`]}
-                badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? mutedForeground }}
-              >
+          renderItem={({ item, index }) => (
+            <AnimatedFadeIn delay={index * 30} duration={250}>
+              <View style={styles.cardWrap}>
+                <ListCard
+                  title={item.spiff_type?.name ?? 'Spiff'}
+                  meta={[`${new Date(item.spiff_date).toLocaleDateString()} · $${item.amount}`]}
+                  badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? mutedForeground }}
+                  onPress={() => router.push(`/(app)/spiffs/${item.id}`)}
+                >
                 {item.details ? <Text style={styles.details} numberOfLines={2}>{item.details}</Text> : null}
-              </ListCard>
-            </Pressable>
+                </ListCard>
+              </View>
+            </AnimatedFadeIn>
           )}
         />
       )}
+      </AnimatedFadeIn>
       <FormModal
         visible={modalOpen}
         onClose={() => setModalOpen(false)}

@@ -1,5 +1,6 @@
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonListCard } from '@/components/ui/Skeleton';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import {
     background,
     border,
@@ -142,8 +143,8 @@ export default function VehiclesListScreen() {
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
       }
       renderItem={({ item }) => (
-        <Pressable
-          style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
+        <AnimatedPressable
+          style={styles.card}
           onPress={() => {
             hapticImpact();
             router.push(`/(app)/vehicles/${item.id}`);
@@ -181,7 +182,7 @@ export default function VehiclesListScreen() {
               )}
             </View>
           </View>
-        </Pressable>
+        </AnimatedPressable>
       )}
     />
   );

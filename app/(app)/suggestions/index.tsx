@@ -120,18 +120,16 @@ export default function SuggestionsScreen() {
             <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
           }
           renderItem={({ item }) => (
-            <Pressable
-              style={styles.cardWrap}
-              onPress={() => router.push(`/(app)/suggestions/${item.id}`)}
-            >
+            <View style={styles.cardWrap}>
               <ListCard
                 title={item.title}
                 meta={[`${item.suggestion_type?.name ?? ''} · ${new Date(item.created_at).toLocaleDateString()}`]}
                 badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? '#94a3b8' }}
+                onPress={() => router.push(`/(app)/suggestions/${item.id}`)}
               >
                 {item.details ? <Text style={styles.details} numberOfLines={2}>{item.details}</Text> : null}
               </ListCard>
-            </Pressable>
+            </View>
           )}
         />
       )}

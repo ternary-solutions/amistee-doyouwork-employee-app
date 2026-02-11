@@ -1,4 +1,5 @@
 import { DocumentViewerModal } from '@/components/document/DocumentViewerModal';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import {
     background,
     border,
@@ -178,9 +179,9 @@ export default function VehicleDetailScreen() {
         ) : (
           <View style={styles.requestsList}>
             {requests.map((r) => (
-              <Pressable
+              <AnimatedPressable
                 key={r.id}
-                style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
+                style={styles.card}
                 onPress={() => router.push(`/(app)/vehicles/${id}/requests/${r.id}`)}
                 accessibilityLabel={`${r.description}, ${r.status}, view details`}
                 accessibilityRole="button"
@@ -189,7 +190,7 @@ export default function VehicleDetailScreen() {
                 <Text style={styles.meta}>
                   {new Date(r.request_date).toLocaleDateString()} · {r.status} · {r.priority}
                 </Text>
-              </Pressable>
+              </AnimatedPressable>
             ))}
           </View>
         )

@@ -1,5 +1,7 @@
-import { Card } from '@/components/ui/Card';
+import { AnimatedFadeIn } from '@/components/ui/AnimatedFadeIn';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ListCard } from '@/components/ui/ListCard';
 import { SkeletonDetailCard } from '@/components/ui/Skeleton';
 import { FormModal } from '@/components/ui/FormModal';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -214,6 +216,7 @@ export default function ExpensesScreen() {
 
   return (
     <>
+      <AnimatedFadeIn style={{ flex: 1 }} duration={280}>
       <ScrollView
         style={[styles.scroll, { backgroundColor: background }]}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xl + insets.bottom }]}
@@ -247,20 +250,20 @@ export default function ExpensesScreen() {
               <View style={styles.typeFilterWrap}>
                 <Text style={styles.typeFilterLabel}>Filter by type</Text>
                 <View style={styles.typeFilterRow}>
-                  <Pressable
+                  <AnimatedPressable
                     style={[styles.typeFilterBtn, !expenseTypeFilter && styles.typeFilterBtnActive]}
                     onPress={() => setExpenseTypeFilter('')}
                   >
                     <Text style={[styles.typeFilterBtnText, !expenseTypeFilter && styles.typeFilterBtnTextActive]}>All</Text>
-                  </Pressable>
+                  </AnimatedPressable>
                   {types.map((t) => (
-                    <Pressable
+                    <AnimatedPressable
                       key={t.id}
                       style={[styles.typeFilterBtn, expenseTypeFilter === t.id && styles.typeFilterBtnActive]}
                       onPress={() => setExpenseTypeFilter(t.id)}
                     >
                       <Text style={[styles.typeFilterBtnText, expenseTypeFilter === t.id && styles.typeFilterBtnTextActive]}>{t.name}</Text>
-                    </Pressable>
+                    </AnimatedPressable>
                   ))}
                 </View>
               </View>
@@ -277,52 +280,26 @@ export default function ExpensesScreen() {
         ) : filteredExpenses.length === 0 ? (
           <EmptyState message={`No ${filter === 'open' ? 'open' : 'closed'} expenses.`} icon="receipt-outline" />
         ) : (
-          filteredExpenses.map((item) => (
-            <Pressable
-              key={item.id}
-              style={styles.cardWrap}
-              onPress={() => {
-                hapticImpact();
-                router.push(`/(app)/expenses/${item.id}`);
-              }}
-            >
-              <Card>
-                <View style={styles.expenseCardRow}>
-                  <View style={styles.expenseCardLeft}>
-                    <Text style={styles.expenseCardTitle}>{item.expense_type?.name ?? 'Expense'}</Text>
-                    {item.details ? (
-                      <Text style={styles.expenseCardDetails} numberOfLines={2}>{item.details}</Text>
-                    ) : null}
-                    <Text style={styles.expenseCardDate}>
-                      {new Date(item.expense_date).toLocaleDateString()}
-                    </Text>
-                  </View>
-                  <View style={styles.expenseCardRight}>
-                    <View
-                      style={[
-                        styles.expenseCardBadge,
-                        { backgroundColor: getStatusBadgeStyle(item.status).bg },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.expenseCardBadgeText,
-                          { color: getStatusBadgeStyle(item.status).text },
-                        ]}
-                      >
-                        {item.status}
-                      </Text>
-                    </View>
-                    <Text style={styles.expenseCardAmount}>
-                      ${Number(item.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </Text>
-                  </View>
-                </View>
-              </Card>
-            </Pressable>
+          filteredExpenses.map((item, index) => (
+            <AnimatedFadeIn key={item.id} delay={index * 30} duration={250}>
+              <View style={styles.cardWrap}>
+                <ListCard
+                  title={item.expense_type?.name ?? 'Expense'}
+                  meta={[
+                    new Date(item.expense_date).toLocaleDateString(),
+                    `$${Number(item.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                  ]}
+                  badge={{ text: item.status, backgroundColor: getStatusBadgeStyle(item.status).bg }}
+                  onPress={() => router.push(`/(app)/expenses/${item.id}`)}
+                >
+                  {item.details ? <Text style={styles.expenseCardDetails} numberOfLines={2}>{item.details}</Text> : null}
+                </ListCard>
+              </View>
+            </AnimatedFadeIn>
           ))
         )}
       </ScrollView>
+      </AnimatedFadeIn>
       <FormModal
         visible={modalOpen}
         onClose={() => setModalOpen(false)}

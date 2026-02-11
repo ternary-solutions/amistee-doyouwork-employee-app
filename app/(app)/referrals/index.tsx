@@ -168,10 +168,7 @@ export default function ReferralsScreen() {
         <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
       }
       renderItem={({ item }) => (
-        <Pressable
-          style={styles.cardWrap}
-          onPress={() => router.push(`/(app)/referrals/${item.id}`)}
-        >
+        <View style={styles.cardWrap}>
           <ListCard
             title={item.name}
             meta={[
@@ -179,6 +176,7 @@ export default function ReferralsScreen() {
                 .filter(Boolean)
                 .join(' · ') || '—',
             ]}
+            onPress={() => router.push(`/(app)/referrals/${item.id}`)}
           >
             {item.details ? (
               <Text style={styles.details} numberOfLines={2}>
@@ -204,7 +202,7 @@ export default function ReferralsScreen() {
               </Pressable>
             </View>
           </ListCard>
-        </Pressable>
+        </View>
       )}
     />
   );

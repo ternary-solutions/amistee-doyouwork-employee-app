@@ -1,4 +1,3 @@
-import { authService } from '@/services/auth';
 import { useMainStore } from '@/store/main';
 import { getStoredLocationId } from '@/store/main';
 import type { ApiRequestOptions, RefreshTokenResponse } from '@/types/auth';
@@ -196,6 +195,7 @@ export async function loginWithOTP(
   phoneNumber: string,
   code: string
 ): Promise<LoginResponse> {
+  const { authService } = await import('@/services/auth');
   const data = await authService.verifyEmployeeLoginOTP(phoneNumber, code);
   await applyAuthResponse(data);
   return data;

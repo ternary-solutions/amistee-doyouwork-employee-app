@@ -12,55 +12,27 @@ import {
     success,
     typography,
 } from '@/constants/theme';
-import { notificationsService } from '@/services/notifications';
+import { useNotifications } from '@/contexts/NotificationContext';
 import type { UserNotification } from '@/types/userNotifications';
 import { Ionicons } from '@expo/vector-icons';
 import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export function DashboardNotifications() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<UserNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const { notifications, unreadCount, loading, markAsRead, refreshNotifications } =
+    useNotifications();
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await notificationsService.getMyNotifications(1, 25, undefined, true);
-      setNotifications(res.items || []);
-      setUnreadCount(res.total ?? 0);
-    } catch (e) {
-      console.error('[DashboardNotifications]', e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  // Filter to unread for dashboard display (matches previous unread_only behavior)
+  const unreadNotifications = notifications.filter(
+    (n) => n.read === false || n.read === undefined
+  );
 
   const handlePress = async (n: UserNotification) => {
     const id = n.id || n.notification_id || '';
     if (id && !n.read) {
-      try {
-        await notificationsService.markAsRead(id);
-        setUnreadCount((c) => Math.max(0, c - 1));
-        setNotifications((prev) =>
-          prev.map((x) =>
-            (x.id || x.notification_id) === id ? { ...x, read: true } : x
-          )
-        );
-      } catch (_) {}
+      await markAsRead(id);
     }
     if (id) router.push(`/(app)/notifications/${id}`);
   };
@@ -78,22 +50,31 @@ export function DashboardNotifications() {
             </View>
           )}
         </View>
-        <Button variant="outline" size="sm" onPress={handleViewAll} accessibilityLabel="View all notifications" accessibilityRole="button">
+        <Button
+          variant="outline"
+          size="sm"
+          onPress={() => {
+            handleViewAll();
+            refreshNotifications();
+          }}
+          accessibilityLabel="View all notifications"
+          accessibilityRole="button"
+        >
           View All
         </Button>
       </View>
 
       {loading ? (
         <ActivityIndicator size="small" color={mutedForeground} style={styles.loader} />
-      ) : notifications.length === 0 ? (
+      ) : unreadNotifications.length === 0 ? (
         <Text style={styles.muted}>No new notifications</Text>
-      ) : notifications.length === 1 ? (
+      ) : unreadNotifications.length === 1 ? (
         <NotificationRow
-          notification={notifications[0]}
-          onPress={() => handlePress(notifications[0])}
+          notification={unreadNotifications[0]}
+          onPress={() => handlePress(unreadNotifications[0])}
         />
       ) : (
-        notifications.slice(0, 3).map((n) => {
+        unreadNotifications.slice(0, 3).map((n) => {
           const id = n.id || n.notification_id || '';
           return (
             <NotificationRow

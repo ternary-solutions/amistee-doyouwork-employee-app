@@ -2,7 +2,6 @@ import {
   background,
   border,
   card,
-  destructive,
   foreground,
   muted,
   mutedForeground,
@@ -10,7 +9,7 @@ import {
   primaryForeground,
   radius,
   spacing,
-  success,
+  statusBadge,
 } from '@/constants/theme';
 import { expensesService } from '@/services/expenses';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -34,12 +33,10 @@ import { FormModal } from '@/components/ui/FormModal';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { EmptyState } from '@/components/ui/EmptyState';
 
-const STATUS_COLORS: Record<string, string> = {
-  Pending: mutedForeground,
-  Approved: primary,
-  Denied: destructive,
-  Reimbursed: success,
-};
+function getStatusBadgeStyle(status: string) {
+  const s = statusBadge[status as keyof typeof statusBadge];
+  return s ?? { bg: mutedForeground, text: '#ffffff' };
+}
 
 type Filter = 'open' | 'closed';
 
@@ -209,8 +206,20 @@ export default function ExpensesScreen() {
                     </Text>
                   </View>
                   <View style={styles.expenseCardRight}>
-                    <View style={[styles.expenseCardBadge, { backgroundColor: STATUS_COLORS[item.status] ?? mutedForeground }]}>
-                      <Text style={styles.expenseCardBadgeText}>{item.status}</Text>
+                    <View
+                      style={[
+                        styles.expenseCardBadge,
+                        { backgroundColor: getStatusBadgeStyle(item.status).bg },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.expenseCardBadgeText,
+                          { color: getStatusBadgeStyle(item.status).text },
+                        ]}
+                      >
+                        {item.status}
+                      </Text>
                     </View>
                     <Text style={styles.expenseCardAmount}>
                       ${Number(item.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -306,7 +315,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     marginBottom: 6,
   },
-  expenseCardBadgeText: { fontSize: 12, fontWeight: '500', color: primaryForeground },
+  expenseCardBadgeText: { fontSize: 12, fontWeight: '500' },
   expenseCardAmount: { fontSize: 20, fontWeight: '700', color: foreground },
   details: { fontSize: 13, color: mutedForeground, marginTop: 4 },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },

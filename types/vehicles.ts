@@ -13,8 +13,15 @@ export interface Vehicle {
   vehicle_name: string;
   license_plate: string;
   vin: string;
-  status: boolean;
+  status?: boolean | null;
   photo_url: string | null;
+  /** Insurance document URL (from backend) */
+  insurance_doc?: string | null;
+  /** Registration document URL (from backend) */
+  registration_doc?: string | null;
+  make?: string | null;
+  model?: string | null;
+  year?: number | null;
   created_at: string;
   updated_at: string;
 }

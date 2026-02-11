@@ -1,15 +1,14 @@
 import { clientInfo, menuGroups } from '@/constants/navigation';
 import { primary, primaryDark, primaryForeground } from '@/constants/theme';
-import { locationsService } from '@/services/locations';
 import { useMainStore } from '@/store/main';
-import { fetchMe, getMediaUrl, logout } from '@/utils/api';
+import { getMediaUrl, logout } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import {
     Pressable,
     StyleSheet,
@@ -23,24 +22,6 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const me = useMainStore((state) => state.me);
-  const locationIds = useMainStore((state) => state.locationIds);
-  const currentLocationId = useMainStore((state) => state.currentLocationId);
-  const setCurrentLocationId = useMainStore((state) => state.setCurrentLocationId);
-  const [locationNames, setLocationNames] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (locationIds.length <= 1) return;
-    let cancelled = false;
-    Promise.all(
-      locationIds.map((id) =>
-        locationsService.getById(id).then((loc) => ({ id, name: loc.name }))
-      )
-    ).then((pairs) => {
-      if (!cancelled) setLocationNames(Object.fromEntries(pairs.map((p) => [p.id, p.name])));
-    });
-    return () => { cancelled = true; };
-  }, [locationIds]);
-
   const currentRouteName = state.routes[state.index]?.name ?? '';
 
   const handleNavigate = useCallback(
@@ -61,18 +42,6 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
     await logout();
     router.replace('/(auth)/login');
   }, [navigation, router]);
-
-  const handleSwitchLocation = useCallback(
-    async (locId: string) => {
-      if (locId === currentLocationId) return;
-      setCurrentLocationId(locId);
-      navigation.closeDrawer();
-      try {
-        await fetchMe();
-      } catch (_) {}
-    },
-    [currentLocationId, setCurrentLocationId, navigation]
-  );
 
   const fullName = me ? [me.first_name, me.last_name].filter(Boolean).join(' ') : '';
 
@@ -159,45 +128,6 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
             {groupIndex < menuGroups.length - 1 && <View style={styles.divider} />}
           </View>
         ))}
-
-        {/* Location switcher (when user has multiple locations) */}
-        {locationIds.length > 1 && (
-          <View style={styles.group}>
-            <Text style={styles.groupLabel}>LOCATION</Text>
-            <View style={styles.locationSwitcher}>
-              {locationIds.map((locId) => {
-                const name = locationNames[locId] ?? locId.slice(0, 8);
-                const isCurrent = locId === currentLocationId;
-                return (
-                  <Pressable
-                    key={locId}
-                    style={({ pressed }) => [
-                      styles.locationBtn,
-                      isCurrent && styles.locationBtnActive,
-                      pressed && styles.pressed,
-                    ]}
-                    onPress={() => handleSwitchLocation(locId)}
-                  >
-                    <Ionicons
-                      name="location"
-                      size={18}
-                      color={isCurrent ? primaryForeground : 'rgba(255,255,255,0.7)'}
-                    />
-                    <Text
-                      style={[
-                        styles.locationBtnText,
-                        isCurrent && styles.locationBtnTextActive,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        )}
 
         {/* Notifications - drawer item for notifications screen */}
         <View style={styles.group}>
@@ -368,29 +298,6 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
-  },
-  locationSwitcher: {
-    gap: 4,
-  },
-  locationBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    height: 48,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
-  locationBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  locationBtnText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.85)',
-    flex: 1,
-  },
-  locationBtnTextActive: {
-    fontWeight: '600',
-    color: primaryForeground,
   },
   divider: {
     height: 1,

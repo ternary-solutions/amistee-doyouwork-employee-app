@@ -141,9 +141,25 @@ export default function VehiclesListScreen() {
               </View>
             )}
             <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{item.vehicle_name}</Text>
-              <Text style={styles.meta}>{item.license_plate} · {item.vehicle_type?.name}</Text>
-              <Text style={styles.meta}>{item.location?.name}</Text>
+              <View style={styles.cardTitleRow}>
+                <Text style={styles.cardTitle}>{item.vehicle_name}</Text>
+                {item.license_plate ? (
+                  <Text style={styles.licensePlate} numberOfLines={1}>{item.license_plate}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.meta}>
+                {[item.vehicle_type?.name, item.make && item.model ? `${item.make} ${item.model}` : null, item.year]
+                  .filter(Boolean)
+                  .join(' · ') || item.location?.name || '—'}
+              </Text>
+              {item.location?.name ? (
+                <Text style={styles.meta}>{item.location.name}</Text>
+              ) : null}
+              {item.status !== undefined && item.status !== null && (
+                <View style={[styles.statusBadge, item.status ? styles.statusActive : styles.statusInactive]}>
+                  <Text style={styles.statusBadgeText}>{item.status ? 'Active' : 'Out of Service'}</Text>
+                </View>
+              )}
             </View>
           </View>
         </Pressable>
@@ -201,6 +217,18 @@ const styles = StyleSheet.create({
   },
   cardThumbEmoji: { fontSize: 24 },
   cardContent: { flex: 1 },
-  cardTitle: { ...typography.title, color: foreground, marginBottom: 4 },
+  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 },
+  cardTitle: { ...typography.title, color: foreground, flex: 1 },
+  licensePlate: { fontSize: 12, color: mutedForeground, flexShrink: 0 },
   meta: { fontSize: 13, color: mutedForeground, marginBottom: 2 },
+  statusBadge: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  statusActive: { backgroundColor: 'rgba(34, 197, 94, 0.2)' },
+  statusInactive: { backgroundColor: 'rgba(245, 158, 11, 0.2)' },
+  statusBadgeText: { fontSize: 11, fontWeight: '600', color: foreground },
 });

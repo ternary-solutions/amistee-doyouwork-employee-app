@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppInitializer } from '@/components/AppInitializer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { PushNotificationSetup } from '@/components/PushNotificationSetup';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 
 const queryClient = new QueryClient();
 
@@ -22,17 +23,19 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider value={DefaultTheme}>
-            <AppInitializer />
-            <PushNotificationSetup />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(app)" />
-              {/* (tabs) and modal: for direct/deep links only; normal flow is drawer via (app) */}
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="dark" />
+            <NotificationProvider>
+              <AppInitializer />
+              <PushNotificationSetup />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(auth)" />
+                <Stack.Screen name="(app)" />
+                {/* (tabs) and modal: for direct/deep links only; normal flow is drawer via (app) */}
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <StatusBar style="dark" />
+            </NotificationProvider>
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as RNImage } from 'react-native';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 type HeaderProps = {
   navigation: {
     goBack: () => void;
@@ -52,12 +52,12 @@ export function AppHeader({
   headerAction,
 }: AppHeaderProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const me = useMainStore((state) => state.me);
 
   const canGoBack = navigation.canGoBack();
-  const showBack = showBackProp ?? (canGoBack && !pathname?.endsWith('/dashboard'));
+  // Always use hamburger menu - never show back button (per product preference)
+  const showBack = showBackProp ?? false;
 
   const openDrawer = () => {
     const drawer = 'getParent' in navigation ? (navigation as { getParent: () => { openDrawer?: () => void } | undefined }).getParent() : null;

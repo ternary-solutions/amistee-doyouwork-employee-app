@@ -44,10 +44,13 @@ export const statusApprovedBg = '#dcfce7';
 export const statusApprovedText = '#166534';
 export const statusDeniedBg = '#fee2e2';
 export const statusDeniedText = '#991b1b';
+export const statusReimbursedBg = '#dcfce7';
+export const statusReimbursedText = '#166534';
 export const statusBadge = {
   Pending: { bg: statusPendingBg, text: statusPendingText },
   Approved: { bg: statusApprovedBg, text: statusApprovedText },
   Denied: { bg: statusDeniedBg, text: statusDeniedText },
+  Reimbursed: { bg: statusReimbursedBg, text: statusReimbursedText },
 } as const;
 
 /** All semantic colors in one object for StyleSheet */

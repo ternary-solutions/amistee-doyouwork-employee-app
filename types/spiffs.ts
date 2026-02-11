@@ -36,4 +36,5 @@ export interface SpiffCreate {
   spiff_date: string;
   amount: number | string;
   details?: string | null;
+  attachment_urls?: string[];
 }

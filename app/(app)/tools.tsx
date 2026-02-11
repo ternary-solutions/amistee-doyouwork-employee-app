@@ -20,7 +20,6 @@ import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Modal,
   Pressable,
   ScrollView,
@@ -31,9 +30,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { ToolRequestDetailSheet } from '../../components/tools/ToolRequestDetailSheet';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: '#eab308',
@@ -95,6 +96,45 @@ function getRejectedSummary(items: ToolRequestLineItem[]): string {
     .join(', ');
 }
 
+/** Requests with returnable items still out with the user */
+function getRequestsToReturn(requests: ToolRequest[]): ToolRequest[] {
+  return requests.filter((req) => {
+    if (req.status !== 'CheckedOut') return false;
+    const items = req.items ?? [];
+    if (items.length > 0) {
+      return items.some((it) => {
+        const f = it.fulfilled_quantity ?? 0;
+        const r = it.returned_quantity ?? 0;
+        return it.tool?.is_returnable && f - r > 0;
+      });
+    }
+    return (
+      req.tool?.is_returnable &&
+      (req.fulfilled_quantity ?? 0) - (req.returned_quantity ?? 0) > 0
+    );
+  });
+}
+
+function getOutstandingSummary(request: ToolRequest): string {
+  const items = request.items ?? [];
+  if (items.length > 0) {
+    const outstanding = items
+      .filter((it) => {
+        const f = it.fulfilled_quantity ?? 0;
+        const r = it.returned_quantity ?? 0;
+        return it.tool?.is_returnable && f - r > 0;
+      })
+      .map(
+        (it) =>
+          `${it.tool?.tool_name ?? it.tool_type?.name ?? 'Tool'} × ${(it.fulfilled_quantity ?? 0) - (it.returned_quantity ?? 0)}`
+      );
+    return outstanding.join(', ');
+  }
+  const out =
+    (request.fulfilled_quantity ?? 0) - (request.returned_quantity ?? 0);
+  return `${request.tool?.tool_name ?? request.tool_type?.name ?? 'Tool'} × ${out}`;
+}
+
 export default function ToolsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -112,6 +152,9 @@ export default function ToolsScreen() {
   const [returnQty, setReturnQty] = useState('');
   const [returnComment, setReturnComment] = useState('');
   const [returnSubmitting, setReturnSubmitting] = useState(false);
+
+  const [detailSheetOpen, setDetailSheetOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<ToolRequest | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -241,6 +284,19 @@ export default function ToolsScreen() {
     ? Math.max(0, (returnRequest.fulfilled_quantity ?? 0) - (returnRequest.returned_quantity ?? 0))
     : 0;
 
+  const requestsToReturn = getRequestsToReturn(toolRequests);
+
+  const openDetail = (req: ToolRequest) => {
+    setSelectedRequest(req);
+    setDetailSheetOpen(true);
+  };
+
+  const handleReturnFromDetail = (req: ToolRequest) => {
+    setDetailSheetOpen(false);
+    setSelectedRequest(null);
+    openReturnModal(req);
+  };
+
   if (loading && toolRequests.length === 0) {
     return (
       <View style={styles.centered}>
@@ -249,6 +305,50 @@ export default function ToolsScreen() {
     );
   }
 
+  const renderRequestCard = (item: ToolRequest) => {
+    const items = item.items ?? [];
+    const fulfilledSummary = getFulfilledSummary(items);
+    const rejectedSummary = getRejectedSummary(items);
+    const expectedReturn =
+      items.find((it) => it.expected_return_date)?.expected_return_date ??
+      item.expected_return_date;
+    const showFulfillment = ['Approved', 'CheckedOut', 'Returned'].includes(item.status);
+
+    return (
+      <View style={styles.cardWrap}>
+        <ListCard
+          title={getToolNames(item)}
+          meta={[
+            getRequestedSummary(item),
+            `Pickup: ${formatDate(item.pickup_date)}`,
+            `Requested: ${formatDate(item.created_at)}`,
+          ]}
+          badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? mutedForeground }}
+          onPress={() => openDetail(item)}
+        >
+          {item.message ? (
+            <Text style={styles.message} numberOfLines={2}>
+              {item.message}
+            </Text>
+          ) : null}
+          {showFulfillment && (
+            <View style={styles.fulfillmentBlock}>
+              {fulfilledSummary ? (
+                <Text style={styles.fulfilledText}>Fulfilled: {fulfilledSummary}</Text>
+              ) : null}
+              {rejectedSummary ? (
+                <Text style={styles.rejectedText}>Rejected: {rejectedSummary}</Text>
+              ) : null}
+              {expectedReturn ? (
+                <Text style={styles.meta}>Expected return: {formatDate(expectedReturn)}</Text>
+              ) : null}
+            </View>
+          )}
+        </ListCard>
+      </View>
+    );
+  };
+
   return (
     <>
       {toolRequests.length === 0 ? (
@@ -256,61 +356,54 @@ export default function ToolsScreen() {
           <EmptyState message="No tool requests yet. Create one to get started." />
         </View>
       ) : (
-        <FlatList
-          data={toolRequests}
-          keyExtractor={(r) => r.id}
+        <ScrollView
           style={{ backgroundColor: background }}
           contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
-          renderItem={({ item }) => {
-            const items = item.items ?? [];
-            const fulfilledSummary = getFulfilledSummary(items);
-            const rejectedSummary = getRejectedSummary(items);
-            const expectedReturn =
-              items.find((it) => it.expected_return_date)?.expected_return_date ??
-              item.expected_return_date;
-            const showFulfillment = ['Approved', 'CheckedOut', 'Returned'].includes(item.status);
-            const thisMaxReturn = Math.max(0, (item.fulfilled_quantity ?? 0) - (item.returned_quantity ?? 0));
-
-            return (
-              <View style={styles.cardWrap}>
-                <ListCard
-                  title={getToolNames(item)}
-                  meta={[
-                    getRequestedSummary(item),
-                    `Pickup: ${formatDate(item.pickup_date)}`,
-                    `Requested: ${formatDate(item.created_at)}`,
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Tools to return section */}
+          {requestsToReturn.length > 0 && (
+            <View style={styles.toReturnSection}>
+              <Text style={styles.sectionTitle}>Tools to return</Text>
+              <Text style={styles.sectionSubtitle}>
+                Items you have checked out that must be returned
+              </Text>
+              {requestsToReturn.map((req) => (
+                <Pressable
+                  key={req.id}
+                  style={({ pressed }) => [
+                    styles.toReturnCard,
+                    pressed && { opacity: 0.8 },
                   ]}
-                  badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? mutedForeground }}
+                  onPress={() => openDetail(req)}
+                  accessibilityLabel={`${getToolNames(req)}, return due ${formatDate(req.expected_return_date)}`}
+                  accessibilityRole="button"
                 >
-                  {item.message ? <Text style={styles.message}>{item.message}</Text> : null}
-                  {showFulfillment && (
-                    <View style={styles.fulfillmentBlock}>
-                      {fulfilledSummary ? (
-                        <Text style={styles.fulfilledText}>Fulfilled: {fulfilledSummary}</Text>
-                      ) : null}
-                      {rejectedSummary ? (
-                        <Text style={styles.rejectedText}>Rejected: {rejectedSummary}</Text>
-                      ) : null}
-                      {expectedReturn ? (
-                        <Text style={styles.meta}>Expected return: {formatDate(expectedReturn)}</Text>
-                      ) : null}
-                    </View>
-                  )}
-                  {thisMaxReturn > 0 && (
-                    <Pressable
-                      style={({ pressed }) => [styles.returnBtn, pressed && { opacity: 0.8 }]}
-                      onPress={() => openReturnModal(item)}
-                      accessibilityLabel="Return tool"
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.returnBtnText}>Return Tool</Text>
-                    </Pressable>
-                  )}
-                </ListCard>
-              </View>
-            );
-          }}
-        />
+                  <View style={styles.toReturnCardContent}>
+                    <Text style={styles.toReturnCardTitle}>
+                      {getToolNames(req)}
+                    </Text>
+                    <Text style={styles.toReturnCardMeta}>
+                      Out: {getOutstandingSummary(req)}
+                    </Text>
+                    {req.expected_return_date && (
+                      <Text style={styles.toReturnCardMeta}>
+                        Due: {formatDate(req.expected_return_date)}
+                      </Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={foreground} />
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          {/* My Requests section */}
+          <View style={styles.requestsSection}>
+            <Text style={styles.sectionTitle}>My Requests</Text>
+            {toolRequests.map((item) => renderRequestCard(item))}
+          </View>
+        </ScrollView>
       )}
 
       {/* Create modal: multi-tool cart */}
@@ -488,6 +581,16 @@ export default function ToolsScreen() {
           </View>
         </View>
       </Modal>
+
+      <ToolRequestDetailSheet
+        visible={detailSheetOpen}
+        onClose={() => {
+          setDetailSheetOpen(false);
+          setSelectedRequest(null);
+        }}
+        request={selectedRequest}
+        onReturnPress={handleReturnFromDetail}
+      />
     </>
   );
 }
@@ -496,6 +599,40 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fill: { flex: 1, backgroundColor: background },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
+  toReturnSection: { marginBottom: spacing.lg },
+  sectionTitle: {
+    ...typography.sectionTitle,
+    color: foreground,
+    marginBottom: spacing.xs,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: mutedForeground,
+    marginBottom: spacing.md,
+  },
+  toReturnCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fef3c7',
+    borderRadius: radius.base,
+    padding: spacing.base,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#fcd34d',
+  },
+  toReturnCardContent: { flex: 1 },
+  toReturnCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: foreground,
+  },
+  toReturnCardMeta: {
+    fontSize: 13,
+    color: mutedForeground,
+    marginTop: 2,
+  },
+  requestsSection: { marginTop: spacing.sm },
   cardWrap: { marginBottom: spacing.md },
   meta: { fontSize: 13, color: mutedForeground, marginBottom: 2 },
   message: { fontSize: 13, color: mutedForeground, marginTop: 4 },

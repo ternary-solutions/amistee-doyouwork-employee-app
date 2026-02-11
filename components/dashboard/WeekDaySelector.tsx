@@ -107,7 +107,7 @@ export function WeekDaySelector({
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginTop: -24,
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
   },
   todayRow: {

@@ -68,23 +68,23 @@ For full system architecture, deployment, and backend capabilities, see the [ami
 
 ### Work Tools
 
-| Feature | Description |
-|---------|-------------|
-| **Dashboard** | Daily schedule by date, vehicle assignments, team members, vacation overview |
-| **Tool Requests** | Request tools from catalog; track status and history |
-| **Spiffs** | View spiff payments and status |
-| **Expenses** | Submit and track expense reports |
-| **Vehicles & Maintenance** | Fleet vehicles, details, repair requests |
-| **Clothing Requests** | Request company clothing; track fulfillment |
-| **Time Off** | Request PTO; view approvals and upcoming vacations |
-| **Resources** | Company resource library and documents |
-| **Suggestions** | Submit and view suggestions |
+| Feature                    | Description                                                                  |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| **Dashboard**              | Daily schedule by date, vehicle assignments, team members, vacation overview |
+| **Tool Requests**          | Request tools from catalog; track status and history                         |
+| **Spiffs**                 | View spiff payments and status                                               |
+| **Expenses**               | Submit and track expense reports                                             |
+| **Vehicles & Maintenance** | Fleet vehicles, details, repair requests                                     |
+| **Clothing Requests**      | Request company clothing; track fulfillment                                  |
+| **Time Off**               | Request PTO; view approvals and upcoming vacations                           |
+| **Resources**              | Company resource library and documents                                       |
+| **Suggestions**            | Submit and view suggestions                                                  |
 
 ### Team Members
 
-| Feature | Description |
-|---------|-------------|
-| **Contacts** | Browse employees by location with search |
+| Feature               | Description                               |
+| --------------------- | ----------------------------------------- |
+| **Contacts**          | Browse employees by location with search  |
 | **Partner Companies** | View referral/partner company information |
 
 ### General
@@ -98,18 +98,18 @@ For full system architecture, deployment, and backend capabilities, see the [ami
 
 ## Technology Stack
 
-| Category | Technology |
-|----------|------------|
-| **Framework** | [Expo](https://expo.dev) ~54 |
-| **Routing** | [Expo Router](https://docs.expo.dev/router/introduction/) (file-based) |
-| **UI** | React Native 0.81, React 19 |
-| **State** | [Zustand](https://zustand-demo.pmnd.rs/) (auth, store), [TanStack Query](https://tanstack.com/query/latest) (server state) |
-| **HTTP** | Axios, with JWT auth and token refresh |
-| **Storage** | expo-secure-store (tokens), AsyncStorage |
-| **UI Components** | Custom components, @gorhom/bottom-sheet, Ionicons |
-| **Media** | expo-image, expo-image-picker, expo-file-system |
-| **Notifications** | expo-notifications, WebSocket |
-| **Forms/Date** | @react-native-community/datetimepicker |
+| Category          | Technology                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Framework**     | [Expo](https://expo.dev) ~54                                                                                               |
+| **Routing**       | [Expo Router](https://docs.expo.dev/router/introduction/) (file-based)                                                     |
+| **UI**            | React Native 0.81, React 19                                                                                                |
+| **State**         | [Zustand](https://zustand-demo.pmnd.rs/) (auth, store), [TanStack Query](https://tanstack.com/query/latest) (server state) |
+| **HTTP**          | Axios, with JWT auth and token refresh                                                                                     |
+| **Storage**       | expo-secure-store (tokens), AsyncStorage                                                                                   |
+| **UI Components** | Custom components, @gorhom/bottom-sheet, Ionicons                                                                          |
+| **Media**         | expo-image, expo-image-picker, expo-file-system                                                                            |
+| **Notifications** | expo-notifications, WebSocket                                                                                              |
+| **Forms/Date**    | @react-native-community/datetimepicker                                                                                     |
 
 ---
 
@@ -232,14 +232,14 @@ The app uses [file-based routing](https://docs.expo.dev/router/introduction/) vi
 
 ### Required Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
+| Variable                   | Description                                   | Example                    |
+| -------------------------- | --------------------------------------------- | -------------------------- |
 | `EXPO_PUBLIC_API_BASE_URL` | Backend API base URL (include trailing slash) | `https://api.example.com/` |
 
 ### Optional
 
-| Variable | Description |
-|----------|-------------|
+| Variable                                | Description                                                                        |
+| --------------------------------------- | ---------------------------------------------------------------------------------- |
 | `EXPO_PUBLIC_WS_NOTIFICATIONS_BASE_URL` | WebSocket notifications URL. If unset, derived from API base (http→ws, https→wss). |
 
 ### Example `.env`
@@ -293,7 +293,21 @@ npm run lint
 
 ## Building & Deployment
 
-The project is configured for [EAS Build](https://docs.expo.dev/build/introduction/) (Expo Application Services). The `app.json` includes an EAS project ID and owner.
+The project is configured for [EAS Build](https://docs.expo.dev/build/introduction/) (Expo Application Services). The `app.json` includes an EAS project ID and owner. The `eas.json` defines build profiles (development, preview, production) and submit profiles for store submission.
+
+### EAS Secrets (Required for Production Builds)
+
+Production builds need `EXPO_PUBLIC_API_BASE_URL` at build time. Set it in EAS:
+
+```bash
+eas secret:create --name EXPO_PUBLIC_API_BASE_URL --value "https://your-production-api.com/" --type string
+```
+
+Optional, if you use a different WebSocket URL for notifications:
+
+```bash
+eas secret:create --name EXPO_PUBLIC_WS_NOTIFICATIONS_BASE_URL --value "wss://your-api.com/ws/notifications" --type string
+```
 
 ### EAS Build (Expo)
 
@@ -301,29 +315,52 @@ The project is configured for [EAS Build](https://docs.expo.dev/build/introducti
 # Install EAS CLI
 npm install -g eas-cli
 
-# Configure build (first time)
-eas build:configure
+# Build for production (iOS + Android)
+eas build --platform all --profile production
 
-# Build for iOS
-eas build --platform ios
+# Build for iOS only
+eas build --platform ios --profile production
 
-# Build for Android
-eas build --platform android
+# Build for Android only
+eas build --platform android --profile production
 ```
+
+### EAS Submit (Store Submission)
+
+After a production build completes:
+
+```bash
+# Submit latest iOS build to App Store Connect (TestFlight)
+eas submit --platform ios --latest --non-interactive
+
+# Submit latest Android build to Google Play Console
+eas submit --platform android --latest --non-interactive
+```
+
+Build and auto-submit in one step:
+
+```bash
+eas build --platform all --profile production --auto-submit
+```
+
+**Before submitting:**
+
+- **iOS:** Replace `YOUR_APP_STORE_CONNECT_APP_ID` in `eas.json` under `submit.production.ios.ascAppId` with your App Store Connect app ID (numeric ID from App Information).
+- **Android:** Create a [Google Service Account](https://docs.expo.dev/submit/android#creating-a-google-service-account) and upload your app manually at least once before API submissions work.
 
 ### Development vs Production
 
 - Use `.env` (or `.env.local`) for local development with a dev API URL.
-- For production builds, configure environment variables in EAS secrets or your CI/CD pipeline so `EXPO_PUBLIC_*` variables are set at build time.
+- For production builds, set `EXPO_PUBLIC_API_BASE_URL` via EAS secrets (see above).
 
 ---
 
 ## Related Repositories
 
-| Repository | Description |
-|------------|-------------|
-| **amistee-dyw** | FastAPI backend – REST API, WebSocket, PostgreSQL, Celery, etc. |
-| **admin-doyouwork** | Admin web portal for managers and administrators |
+| Repository          | Description                                                     |
+| ------------------- | --------------------------------------------------------------- |
+| **amistee-dyw**     | FastAPI backend – REST API, WebSocket, PostgreSQL, Celery, etc. |
+| **admin-doyouwork** | Admin web portal for managers and administrators                |
 
 ---
 

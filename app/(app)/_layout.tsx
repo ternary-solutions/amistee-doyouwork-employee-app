@@ -21,8 +21,8 @@ export default function AppLayout() {
       }}
     >
       <Drawer.Screen name="dashboard" options={{ drawerLabel: 'My Dashboard', title: 'Dashboard', headerShown: false }} />
-      <Drawer.Screen name="notifications" options={{ drawerLabel: 'Notifications', title: 'Notifications' }} />
       <Drawer.Screen name="schedule" options={{ drawerLabel: 'My Schedule', title: 'My Schedule' }} />
+      <Drawer.Screen name="notifications" options={{ drawerLabel: 'Notifications', title: 'Notifications' }} />
       <Drawer.Screen name="tools" options={{ drawerLabel: 'Tool Requests', title: 'Tools' }} />
       <Drawer.Screen name="spiffs" options={{ drawerLabel: 'Spiffs', title: 'Spiffs' }} />
       <Drawer.Screen name="expenses" options={{ drawerLabel: 'Expenses', title: 'Expenses' }} />

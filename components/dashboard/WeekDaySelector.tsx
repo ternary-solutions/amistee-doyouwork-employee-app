@@ -8,6 +8,7 @@ import {
     radius,
     spacing,
 } from '@/constants/theme';
+import { hapticSelection } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { addDays, format, isSameDay, startOfWeek, subDays } from 'date-fns';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -48,7 +49,10 @@ export function WeekDaySelector({
         </Button>
         <View style={styles.arrows}>
           <Pressable
-            onPress={goToPrevWeek}
+            onPress={() => {
+              hapticSelection();
+              goToPrevWeek();
+            }}
             style={({ pressed }) => [styles.arrowBtn, pressed && styles.pressed]}
             accessibilityLabel="Previous week"
             accessibilityRole="button"
@@ -56,7 +60,10 @@ export function WeekDaySelector({
             <Ionicons name="chevron-back" size={22} color={foreground} />
           </Pressable>
           <Pressable
-            onPress={goToNextWeek}
+            onPress={() => {
+              hapticSelection();
+              goToNextWeek();
+            }}
             style={({ pressed }) => [styles.arrowBtn, pressed && styles.pressed]}
             accessibilityLabel="Next week"
             accessibilityRole="button"
@@ -72,7 +79,10 @@ export function WeekDaySelector({
           return (
             <Pressable
               key={day.toISOString()}
-              onPress={() => onDateChange(day)}
+              onPress={() => {
+                hapticSelection();
+                onDateChange(day);
+              }}
               style={[
                 styles.dayBtn,
                 isSelected && styles.dayBtnSelected,

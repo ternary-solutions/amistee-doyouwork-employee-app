@@ -1,5 +1,7 @@
 import { foreground, mutedForeground, primaryForeground, typography } from '@/constants/theme';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { hapticImpact } from '@/utils/haptics';
+import { StyleSheet, Text, View } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
 import { Card } from './Card';
 
 type ListCardProps = {
@@ -34,9 +36,14 @@ export function ListCard({ title, subtitle, meta, badge, onPress, children }: Li
 
   if (onPress) {
     return (
-      <Pressable style={({ pressed }) => [pressed && styles.pressed]} onPress={onPress}>
+      <AnimatedPressable
+        onPress={() => {
+          hapticImpact();
+          onPress();
+        }}
+      >
         <Card>{content}</Card>
-      </Pressable>
+      </AnimatedPressable>
     );
   }
   return <Card>{content}</Card>;
@@ -49,8 +56,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   main: { flex: 1 },
-  title: { ...typography.title, color: foreground, marginBottom: 4 },
-  meta: { fontSize: 13, color: mutedForeground, marginBottom: 2 },
+  title: { ...typography.title, color: foreground, marginBottom: 8 },
+  meta: { fontSize: 13, color: mutedForeground, marginBottom: 6 },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,

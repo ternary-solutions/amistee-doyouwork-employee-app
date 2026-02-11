@@ -1,5 +1,8 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Toasts } from '@backpackapp-io/react-native-toast';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -20,13 +23,15 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider value={DefaultTheme}>
-            <NotificationProvider>
-              <AppInitializer />
-              <PushNotificationSetup />
-              <Stack screenOptions={{ headerShown: false }}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <BottomSheetModalProvider>
+            <QueryClientProvider client={queryClient}>
+              <ThemeProvider value={DefaultTheme}>
+                <NotificationProvider>
+                  <AppInitializer />
+                  <PushNotificationSetup />
+                  <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(app)" />
@@ -34,11 +39,14 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
               </Stack>
-              <StatusBar style="dark" />
-            </NotificationProvider>
-          </ThemeProvider>
-        </QueryClientProvider>
-      </SafeAreaProvider>
+              <Toasts />
+                  <StatusBar style="dark" />
+                </NotificationProvider>
+              </ThemeProvider>
+            </QueryClientProvider>
+          </BottomSheetModalProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     </ErrorBoundary>
   );
 }

@@ -1,41 +1,41 @@
+import { EmptyState } from '@/components/ui/EmptyState';
+import { FormModal } from '@/components/ui/FormModal';
+import { ListCard } from '@/components/ui/ListCard';
 import {
-  background,
-  border,
-  card,
-  destructive,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  primaryForeground,
-  radius,
-  spacing,
-  success,
+    background,
+    border,
+    destructive,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    radius,
+    spacing,
+    success,
 } from '@/constants/theme';
 import { mediaService } from '@/services/media';
 import { spiffsService } from '@/services/spiffs';
 import type { Spiff } from '@/types/spiffs';
+import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
+import { format } from 'date-fns';
+import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
-import { FormModal } from '@/components/ui/FormModal';
-import { ListCard } from '@/components/ui/ListCard';
-import { EmptyState } from '@/components/ui/EmptyState';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: mutedForeground,
@@ -46,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SpiffsScreen() {
   const navigation = useNavigation();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [spiffs, setSpiffs] = useState<Spiff[]>([]);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
@@ -57,6 +58,7 @@ export default function SpiffsScreen() {
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<{ uri: string; uploading?: boolean }[]>([]);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -197,7 +199,10 @@ export default function SpiffsScreen() {
           style={{ backgroundColor: background }}
           contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
           renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
+            <Pressable
+              style={styles.cardWrap}
+              onPress={() => router.push(`/(app)/spiffs/${item.id}`)}
+            >
               <ListCard
                 title={item.spiff_type?.name ?? 'Spiff'}
                 meta={[`${new Date(item.spiff_date).toLocaleDateString()} · $${item.amount}`]}
@@ -205,7 +210,7 @@ export default function SpiffsScreen() {
               >
                 {item.details ? <Text style={styles.details} numberOfLines={2}>{item.details}</Text> : null}
               </ListCard>
-            </View>
+            </Pressable>
           )}
         />
       )}
@@ -225,8 +230,23 @@ export default function SpiffsScreen() {
             </Pressable>
           ))}
         </View>
-        <Text style={styles.label}>Date (YYYY-MM-DD)</Text>
-        <TextInput style={styles.input} value={date} onChangeText={setDate} placeholder="2025-02-15" />
+        <Text style={styles.label}>Date</Text>
+        <Pressable style={styles.dateBtn} onPress={() => setShowDatePicker(true)}>
+          <Text style={[styles.dateBtnText, !date && styles.dateBtnPlaceholder]}>
+            {date ? new Date(date + 'T12:00:00').toLocaleDateString() : 'Select date'}
+          </Text>
+        </Pressable>
+        {showDatePicker && (
+          <DateTimePicker
+            value={date ? new Date(date + 'T12:00:00') : new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, selectedDate) => {
+              setShowDatePicker(Platform.OS === 'ios');
+              if (selectedDate) setDate(format(selectedDate, 'yyyy-MM-dd'));
+            }}
+          />
+        )}
         <Text style={styles.label}>Amount</Text>
         <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="0" keyboardType="decimal-pad" />
         <Text style={styles.label}>Details (optional)</Text>
@@ -279,6 +299,9 @@ const styles = StyleSheet.create({
   details: { fontSize: 13, color: mutedForeground, marginTop: 4 },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },
   input: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base, fontSize: 16 },
+  dateBtn: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base },
+  dateBtnText: { fontSize: 16, color: foreground },
+  dateBtnPlaceholder: { color: mutedForeground },
   textArea: { minHeight: 60 },
   picker: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.base },
   pickerOption: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.sm, backgroundColor: muted },

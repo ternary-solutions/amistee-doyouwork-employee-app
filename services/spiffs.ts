@@ -25,6 +25,10 @@ export const spiffsService = {
     );
   },
 
+  async getById(id: string): Promise<Spiff> {
+    return apiRequest<unknown, Spiff>(`spiffs/${id}`, { method: 'GET' }, true, true);
+  },
+
   async create(data: SpiffCreate): Promise<Spiff> {
     return apiRequest<SpiffCreate, Spiff>('spiffs/', { method: 'POST', data }, true, true);
   },

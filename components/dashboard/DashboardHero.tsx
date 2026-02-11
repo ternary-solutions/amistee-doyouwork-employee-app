@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   dayBlock: {
     alignItems: 'center',
-    paddingTop: spacing.base,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
   },
   dayName: {
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   fullDate: {
     ...typography.heroDate,
-    marginTop: 4,
+    marginTop: spacing.sm,
   },
   waveWrap: {
     position: 'absolute',

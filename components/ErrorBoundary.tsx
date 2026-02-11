@@ -40,7 +40,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           <View style={styles.card}>
             <Text style={styles.title}>Something went wrong</Text>
             <Text style={styles.message}>
-              We're sorry, but an unexpected error occurred. Please try again or contact support if the issue persists.
+              {`We're sorry, but an unexpected error occurred. Please try again or contact support if the issue persists.`}
             </Text>
             {this.state.error && (
               <View style={styles.details}>

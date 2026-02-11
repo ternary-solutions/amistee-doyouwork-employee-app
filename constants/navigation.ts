@@ -26,7 +26,6 @@ export const menuGroups: MenuGroup[] = [
       { name: 'vehicles', label: 'Vehicles & Maintenance', icon: 'car' },
       { name: 'clothing', label: 'Clothing Requests', icon: 'shirt' },
       { name: 'time-off', label: 'Time Off Requests', icon: 'calendar' },
-      { name: 'schedule', label: 'My Schedule', icon: 'calendar-outline' },
       { name: 'resources', label: 'Resources', icon: 'library' },
       { name: 'suggestions', label: 'Suggestions', icon: 'bulb' },
     ],

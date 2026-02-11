@@ -14,15 +14,16 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { notificationsService } from '@/services/notifications';
 import type { UserNotification } from '@/types/userNotifications';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { hapticImpact } from '@/utils/haptics';
 import { formatDistanceToNow } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +31,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonListCard } from '@/components/ui/Skeleton';
 
 export default function NotificationsListScreen() {
   const router = useRouter();
@@ -88,8 +90,17 @@ export default function NotificationsListScreen() {
 
   if (loading && notifications.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={primary} />
+      <View style={[styles.skeletonContainer, { paddingBottom: spacing.xl + insets.bottom }]}>
+        <View style={styles.searchWrap}>
+          <View style={[styles.searchInput, { height: 44, backgroundColor: border }]} />
+        </View>
+        <View style={styles.skeletonWrap}>
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+        </View>
       </View>
     );
   }
@@ -101,10 +112,16 @@ export default function NotificationsListScreen() {
       style={{ backgroundColor: background }}
       ListHeaderComponent={renderHeader}
       contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
+      refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+      }
       renderItem={({ item }) => (
         <Pressable
           style={({ pressed }) => [styles.card, !item.read && styles.cardUnread, pressed && { opacity: 0.8 }]}
-          onPress={() => handleItemPress(item)}
+          onPress={() => {
+            hapticImpact();
+            handleItemPress(item);
+          }}
           accessibilityLabel={`${item.type || 'Notification'}: ${item.message}`}
           accessibilityRole="button"
         >
@@ -124,7 +141,7 @@ export default function NotificationsListScreen() {
           </View>
         </Pressable>
       )}
-      ListEmptyComponent={<EmptyState message="No notifications found" />}
+      ListEmptyComponent={<EmptyState message="No notifications found" icon="notifications-outline" />}
     />
   );
 }
@@ -132,6 +149,8 @@ export default function NotificationsListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  skeletonContainer: { flex: 1, backgroundColor: background },
+  skeletonWrap: { paddingHorizontal: spacing.base },
   searchWrap: { paddingHorizontal: spacing.base, paddingBottom: spacing.sm },
   searchInput: {
     borderWidth: 1,

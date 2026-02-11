@@ -1,37 +1,37 @@
+import { DocumentViewerModal } from '@/components/document/DocumentViewerModal';
 import {
-  background,
-  border,
-  card,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  primaryForeground,
-  radius,
-  spacing,
-  typography,
+    background,
+    border,
+    card,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    radius,
+    spacing,
+    typography,
 } from '@/constants/theme';
 import { repairRequestsService } from '@/services/requests/repairs';
 import { vehiclesService } from '@/services/vehicles';
 import type { RepairPriority, RepairRequest } from '@/types/requests/repairs';
 import type { Vehicle } from '@/types/vehicles';
-import { DocumentViewerModal } from '@/components/document/DocumentViewerModal';
-import { getErrorMessage } from '@/utils/errorMessage';
 import { getMediaUrl } from '@/utils/api';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

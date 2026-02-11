@@ -33,6 +33,16 @@ export const referralsService = {
   },
 
   async listCategories(): Promise<Type[]> {
-    return apiRequest<unknown, Type[]>('types/referral', { method: 'GET' }, true, true);
+    return apiRequest<unknown, Type[]>(
+      'types/referral-category',
+      { method: 'GET' },
+      true,
+      true
+    );
+  },
+
+  /** Alias for listCategories - matches Ionic service API */
+  async listTypes(): Promise<Type[]> {
+    return this.listCategories();
   },
 };

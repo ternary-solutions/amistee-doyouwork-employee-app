@@ -13,6 +13,7 @@ import {
 } from '@/constants/theme';
 import { timeOffRequestsService } from '@/services/requests/timeOffs';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { toast as showToast } from '@/utils/toast';
 import type { TimeOffRequest } from '@/types/requests/timeOffs';
 import { format } from 'date-fns';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
@@ -21,6 +22,7 @@ import {
   Alert,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,6 +35,7 @@ import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonListCard } from '@/components/ui/Skeleton';
 
 const TYPES: Array<'Vacation' | 'Sick' | 'Personal'> = ['Vacation', 'Sick', 'Personal'];
 const STATUS_COLORS: Record<string, string> = {
@@ -89,6 +92,7 @@ export default function TimeOffScreen() {
       setModalOpen(false);
       setStartDate('');
       setEndDate('');
+      showToast.success('Time off request submitted.');
       load();
     } catch (error) {
       console.error('Create time off failed', error);
@@ -100,9 +104,20 @@ export default function TimeOffScreen() {
 
   if (loading && requests.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={primary} />
-      </View>
+      <ScrollView
+        style={[styles.scroll, { backgroundColor: background }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xl + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.skeletonPlaceholder} />
+        <View style={styles.skeletonWrap}>
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+        </View>
+      </ScrollView>
     );
   }
 
@@ -111,6 +126,9 @@ export default function TimeOffScreen() {
       <ScrollView
         style={[styles.scroll, { backgroundColor: background }]}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xl + insets.bottom }]}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+        }
       >
         <SegmentedControl
           options={[{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed' }]}
@@ -119,9 +137,13 @@ export default function TimeOffScreen() {
         />
 
         {requests.length === 0 ? (
-          <EmptyState message="No time off requests yet." />
+          <EmptyState
+            message="No time off requests yet. Tap the button below to request time off."
+            icon="calendar-outline"
+            action={{ label: 'Request time off', onPress: () => setModalOpen(true) }}
+          />
         ) : filteredRequests.length === 0 ? (
-          <EmptyState message={`No ${filter === 'open' ? 'open' : 'closed'} time off requests.`} />
+          <EmptyState message={`No ${filter === 'open' ? 'open' : 'closed'} time off requests.`} icon="calendar-outline" />
         ) : (
           filteredRequests.map((item) => (
             <View key={item.id} style={styles.cardWrap}>
@@ -192,6 +214,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.base, paddingBottom: spacing.xl },
+  skeletonPlaceholder: { height: 52, marginBottom: spacing.base },
+  skeletonWrap: { paddingHorizontal: spacing.base },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   cardWrap: { marginBottom: spacing.md },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },

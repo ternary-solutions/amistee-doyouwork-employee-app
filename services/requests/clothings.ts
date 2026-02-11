@@ -1,7 +1,7 @@
 import type {
-  ClothingRequest,
-  ClothingRequestCreate,
-  ClothingRequestList,
+    ClothingRequest,
+    ClothingRequestCreate,
+    ClothingRequestList,
 } from '@/types/requests/clothings';
 import type { Type } from '@/types/types';
 import { apiRequest } from '@/utils/api';
@@ -23,6 +23,15 @@ export const clothingRequestsService = {
     if (size && size !== 'All') params.append('size', size);
     return apiRequest<unknown, ClothingRequestList>(
       `clothing-requests/?${params.toString()}`,
+      { method: 'GET' },
+      true,
+      true
+    );
+  },
+
+  async getById(id: string): Promise<ClothingRequest> {
+    return apiRequest<unknown, ClothingRequest>(
+      `clothing-requests/${id}`,
       { method: 'GET' },
       true,
       true

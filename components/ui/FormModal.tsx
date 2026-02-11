@@ -1,5 +1,7 @@
 import { border, card, foreground, primary, primaryForeground, radius, spacing, typography } from '@/constants/theme';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useCallback, useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type FormModalProps = {
   visible: boolean;
@@ -27,57 +29,83 @@ export function FormModal({
   contentMaxHeight = '80%',
 }: FormModalProps) {
   const disabled = submitting || submitDisabled;
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = ['50%', contentMaxHeight === '85%' ? '85%' : '80%'];
+
+  const handleDismiss = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    if (visible) {
+      bottomSheetRef.current?.present();
+    } else {
+      bottomSheetRef.current?.dismiss();
+    }
+  }, [visible]);
+
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <View style={[styles.content, { maxHeight: contentMaxHeight }]}>
-          <Text style={styles.title}>{title}</Text>
-          <ScrollView keyboardShouldPersistTaps="handled" style={styles.body}>
-            {children}
-          </ScrollView>
-          <View style={styles.actions}>
-            <Pressable
-              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.8 }]}
-              onPress={onClose}
-              accessibilityLabel="Cancel"
-              accessibilityRole="button"
-            >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.submitBtn,
-                disabled && styles.submitBtnDisabled,
-                !disabled && pressed && { opacity: 0.8 },
-              ]}
-              onPress={onSubmit}
-              disabled={disabled}
-              accessibilityLabel={submitting ? 'Submitting' : submitLabel}
-              accessibilityRole="button"
-            >
-              <Text style={styles.submitBtnText}>{submitting ? 'Submitting...' : submitLabel}</Text>
-            </Pressable>
-          </View>
+    <BottomSheetModal
+      ref={bottomSheetRef}
+      snapPoints={snapPoints}
+      onDismiss={handleDismiss}
+      enablePanDownToClose
+      keyboardBehavior="interactive"
+      android_keyboardInputMode="adjustResize"
+      backgroundStyle={styles.background}
+      handleIndicatorStyle={styles.handle}
+    >
+      <View style={styles.content}>
+        <Text style={styles.title}>{title}</Text>
+        <BottomSheetScrollView
+          keyboardShouldPersistTaps="handled"
+          style={styles.body}
+          contentContainerStyle={styles.bodyContent}
+        >
+          {children}
+        </BottomSheetScrollView>
+        <View style={styles.actions}>
+          <Pressable
+            style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.8 }]}
+            onPress={onClose}
+            accessibilityLabel="Cancel"
+            accessibilityRole="button"
+          >
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.submitBtn,
+              disabled && styles.submitBtnDisabled,
+              !disabled && pressed && { opacity: 0.8 },
+            ]}
+            onPress={onSubmit}
+            disabled={disabled}
+            accessibilityLabel={submitting ? 'Submitting' : submitLabel}
+            accessibilityRole="button"
+          >
+            <Text style={styles.submitBtnText}>{submitting ? 'Submitting...' : submitLabel}</Text>
+          </Pressable>
         </View>
       </View>
-    </Modal>
+    </BottomSheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
+  background: {
+    backgroundColor: card,
+  },
+  handle: {
+    backgroundColor: border,
   },
   content: {
-    backgroundColor: card,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    flex: 1,
     padding: spacing.lg,
   },
   title: { ...typography.sectionTitle, marginBottom: spacing.base },
-  body: { maxHeight: 400 },
+  body: { flex: 1 },
+  bodyContent: { paddingBottom: spacing.xl },
   actions: {
     flexDirection: 'row',
     gap: spacing.md,

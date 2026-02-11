@@ -21,20 +21,25 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ToolRequestDetailSheet } from '../../components/tools/ToolRequestDetailSheet';
+import { SkeletonDetailCard } from '@/components/ui/Skeleton';
+import { ToolRequestDetailSheet } from '@/components/tools/ToolRequestDetailSheet';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: '#eab308',
@@ -155,23 +160,89 @@ export default function ToolsScreen() {
 
   const [detailSheetOpen, setDetailSheetOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<ToolRequest | null>(null);
+  const [showPickupDatePicker, setShowPickupDatePicker] = useState(false);
+
+  const [createToolsSearch, setCreateToolsSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(createToolsSearch, 300);
+  const [createToolsPage, setCreateToolsPage] = useState(1);
+  const [createToolsTotalPages, setCreateToolsTotalPages] = useState(1);
+  const [createToolsTotal, setCreateToolsTotal] = useState(0);
+  const [createToolsLoading, setCreateToolsLoading] = useState(false);
+  const [createToolsLoadingMore, setCreateToolsLoadingMore] = useState(false);
+  const [toolsById, setToolsById] = useState<Map<string, Tool>>(new Map());
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [toolsRes, requestsRes] = await Promise.all([
-        toolsService.list(1, 100),
-        toolRequestsService.list(1, 50),
-      ]);
-      setTools(toolsRes?.items ?? []);
+      const requestsRes = await toolRequestsService.list(1, 50);
       setToolRequests(requestsRes?.items ?? []);
     } catch (error) {
-      console.error('Failed to load tools/requests', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to load tools. Please try again.'));
+      console.error('Failed to load requests', error);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to load tool requests. Please try again.'));
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const PAGE_SIZE = 24;
+  const loadCreateTools = useCallback(
+    async (pageNum: number, append: boolean) => {
+      if (!createModalOpen) return;
+      if (append) setCreateToolsLoadingMore(true);
+      else setCreateToolsLoading(true);
+      try {
+        const data = await toolsService.list(
+          pageNum,
+          PAGE_SIZE,
+          debouncedSearch || undefined
+        );
+        const items = data?.items ?? [];
+        setTools((prev) => (append ? [...prev, ...items] : items));
+        setCreateToolsPage(pageNum);
+        setCreateToolsTotalPages(data?.total_pages ?? 1);
+        setCreateToolsTotal(data?.total ?? 0);
+        setToolsById((prev) => {
+          const next = new Map(prev);
+          items.forEach((t) => next.set(t.id, t));
+          return next;
+        });
+      } catch (error) {
+        console.error('Failed to load tools', error);
+        Alert.alert('Error', getErrorMessage(error, 'Failed to load tools. Please try again.'));
+      } finally {
+        setCreateToolsLoading(false);
+        setCreateToolsLoadingMore(false);
+      }
+    },
+    [createModalOpen, debouncedSearch]
+  );
+
+  useEffect(() => {
+    if (createModalOpen) {
+      setCreateToolsPage(1);
+      loadCreateTools(1, false);
+    } else {
+      setTools([]);
+      setCreateToolsSearch('');
+      setCreateToolsPage(1);
+      setToolsById(new Map());
+    }
+  }, [createModalOpen, debouncedSearch, loadCreateTools]);
+
+  const loadMoreCreateTools = useCallback(() => {
+    if (createToolsPage >= createToolsTotalPages || createToolsLoadingMore || createToolsLoading)
+      return;
+    const nextPage = createToolsPage + 1;
+    setCreateToolsPage(nextPage);
+    setCreateToolsLoadingMore(true);
+    loadCreateTools(nextPage, true);
+  }, [
+    createToolsPage,
+    createToolsTotalPages,
+    createToolsLoadingMore,
+    createToolsLoading,
+    loadCreateTools,
+  ]);
 
   useEffect(() => {
     load();
@@ -184,23 +255,23 @@ export default function ToolsScreen() {
     });
   }, [navigation]);
 
-  const addToCart = (toolId: string) => {
-    const tool = tools.find((t) => t.id === toolId);
+  const addToCart = (tool: Tool) => {
     if (!tool || tool.total_stock <= 0) return;
+    setToolsById((prev) => new Map(prev).set(tool.id, tool));
     setCart((prev) => {
-      const existing = prev.find((c) => c.tool_id === toolId);
+      const existing = prev.find((c) => c.tool_id === tool.id);
       if (existing) {
         const newQty = Math.min(existing.quantity + 1, tool.total_stock);
         return prev.map((c) =>
-          c.tool_id === toolId ? { ...c, quantity: newQty } : c
+          c.tool_id === tool.id ? { ...c, quantity: newQty } : c
         );
       }
-      return [...prev, { tool_id: toolId, quantity: 1 }];
+      return [...prev, { tool_id: tool.id, quantity: 1 }];
     });
   };
 
   const updateCartQty = (toolId: string, delta: number) => {
-    const tool = tools.find((t) => t.id === toolId);
+    const tool = toolsById.get(toolId) ?? tools.find((t) => t.id === toolId);
     if (!tool) return;
     setCart((prev) => {
       const existing = prev.find((c) => c.tool_id === toolId);
@@ -299,9 +370,19 @@ export default function ToolsScreen() {
 
   if (loading && toolRequests.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={primary} />
-      </View>
+      <ScrollView
+        style={{ backgroundColor: background }}
+        contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.skeletonWrap}>
+          <SkeletonDetailCard />
+          <SkeletonDetailCard />
+          <SkeletonDetailCard />
+          <SkeletonDetailCard />
+          <SkeletonDetailCard />
+        </View>
+      </ScrollView>
     );
   }
 
@@ -353,13 +434,20 @@ export default function ToolsScreen() {
     <>
       {toolRequests.length === 0 ? (
         <View style={[styles.fill, { paddingBottom: insets.bottom }]}>
-          <EmptyState message="No tool requests yet. Create one to get started." />
+          <EmptyState
+            message="No tool requests yet. Tap + to create one."
+            icon="construct-outline"
+            action={{ label: 'Request tools', onPress: () => setCreateModalOpen(true) }}
+          />
         </View>
       ) : (
         <ScrollView
           style={{ backgroundColor: background }}
           contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+          }
         >
           {/* Tools to return section */}
           {requestsToReturn.length > 0 && (
@@ -418,37 +506,86 @@ export default function ToolsScreen() {
         contentMaxHeight="85%"
       >
         <Text style={styles.label}>Select tools</Text>
-        <View style={styles.toolList}>
-          {tools.map((t) => (
-            <View key={t.id} style={styles.toolRow}>
-              <View style={styles.toolInfo}>
-                <Text style={styles.toolName}>{t.tool_name}</Text>
-                <Text style={styles.toolStock}>
-                  {t.total_stock > 0 ? `Stock: ${t.total_stock}` : 'Out of stock'}
-                </Text>
-              </View>
-              <Pressable
-                style={[
-                  styles.addToolBtn,
-                  (loading || t.total_stock <= 0) && styles.addToolBtnDisabled,
-                ]}
-                onPress={() => addToCart(t.id)}
-                disabled={loading || t.total_stock <= 0}
-              >
-                <Text style={styles.addToolBtnText}>
-                  {cart.find((c) => c.tool_id === t.id) ? 'Add more' : 'Add'}
-                </Text>
-              </Pressable>
+        <TextInput
+          style={[styles.input, styles.searchInput]}
+          value={createToolsSearch}
+          onChangeText={setCreateToolsSearch}
+          placeholder="Search tools..."
+          placeholderTextColor={mutedForeground}
+        />
+        <ScrollView
+          style={styles.toolListScroll}
+          onScroll={({ nativeEvent }) => {
+            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+            const paddingToBottom = 60;
+            if (
+              layoutMeasurement.height + contentOffset.y >=
+              contentSize.height - paddingToBottom
+            ) {
+              loadMoreCreateTools();
+            }
+          }}
+          scrollEventThrottle={400}
+          nestedScrollEnabled
+        >
+          {createToolsLoading ? (
+            <View style={styles.toolsLoader}>
+              <ActivityIndicator size="small" color={primary} />
             </View>
-          ))}
-        </View>
+          ) : tools.length === 0 ? (
+            <Text style={styles.mutedText}>
+              {debouncedSearch ? 'No tools match your search.' : 'No tools available.'}
+            </Text>
+          ) : (
+            <>
+              {tools.map((t) => (
+                <View key={t.id} style={styles.toolRow}>
+                  <View style={styles.toolInfo}>
+                    <Text style={styles.toolName}>{t.tool_name}</Text>
+                    <Text style={styles.toolStock}>
+                      {t.total_stock > 0 ? `Stock: ${t.total_stock}` : 'Out of stock'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    style={[
+                      styles.addToolBtn,
+                      (createToolsLoading || t.total_stock <= 0) && styles.addToolBtnDisabled,
+                    ]}
+                    onPress={() => addToCart(t)}
+                    disabled={createToolsLoading || t.total_stock <= 0}
+                  >
+                    <Text style={styles.addToolBtnText}>
+                      {cart.find((c) => c.tool_id === t.id) ? 'Add more' : 'Add'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ))}
+              {!createToolsLoading && createToolsPage < createToolsTotalPages && (
+                createToolsLoadingMore ? (
+                  <View style={styles.loadMoreLoader}>
+                    <ActivityIndicator size="small" color={primary} />
+                  </View>
+                ) : (
+                  <Pressable
+                    style={({ pressed }) => [styles.loadMoreBtn, pressed && { opacity: 0.8 }]}
+                    onPress={loadMoreCreateTools}
+                  >
+                    <Text style={styles.loadMoreBtnText}>
+                      Load more ({tools.length} of {createToolsTotal})
+                    </Text>
+                  </Pressable>
+                )
+              )}
+            </>
+          )}
+        </ScrollView>
         <Text style={styles.label}>Cart ({cart.reduce((s, c) => s + c.quantity, 0)} item(s))</Text>
         {cart.length === 0 ? (
           <Text style={styles.mutedText}>Your cart is empty.</Text>
         ) : (
           <View style={styles.cartList}>
             {cart.map((c) => {
-              const tool = tools.find((t) => t.id === c.tool_id);
+              const tool = toolsById.get(c.tool_id) ?? tools.find((t) => t.id === c.tool_id);
               if (!tool) return null;
               return (
                 <View key={c.tool_id} style={styles.cartRow}>
@@ -479,14 +616,26 @@ export default function ToolsScreen() {
             })}
           </View>
         )}
-        <Text style={styles.label}>Pickup date (YYYY-MM-DD)</Text>
-        <TextInput
-          style={styles.input}
-          value={createPickup}
-          onChangeText={setCreatePickup}
-          placeholder="2025-02-15"
-          placeholderTextColor={mutedForeground}
-        />
+        <Text style={styles.label}>Pickup date</Text>
+        <Pressable
+          style={styles.dateBtn}
+          onPress={() => setShowPickupDatePicker(true)}
+        >
+          <Text style={[styles.dateBtnText, !createPickup && styles.dateBtnPlaceholder]}>
+            {createPickup ? new Date(createPickup + 'T12:00:00').toLocaleDateString() : 'Select date'}
+          </Text>
+        </Pressable>
+        {showPickupDatePicker && (
+          <DateTimePicker
+            value={createPickup ? new Date(createPickup + 'T12:00:00') : new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, selectedDate) => {
+              setShowPickupDatePicker(Platform.OS === 'ios');
+              if (selectedDate) setCreatePickup(selectedDate.toISOString().slice(0, 10));
+            }}
+          />
+        )}
         <Text style={styles.label}>Comment (optional)</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
@@ -597,18 +746,19 @@ export default function ToolsScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  skeletonWrap: { padding: spacing.base },
   fill: { flex: 1, backgroundColor: background },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   toReturnSection: { marginBottom: spacing.lg },
   sectionTitle: {
     ...typography.sectionTitle,
     color: foreground,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   sectionSubtitle: {
     fontSize: 13,
     color: mutedForeground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.base,
   },
   toReturnCard: {
     flexDirection: 'row',
@@ -661,8 +811,11 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
   },
   modalScroll: { maxHeight: 400 },
-  modalTitle: { ...typography.sectionTitle, marginBottom: spacing.base },
+  modalTitle: { ...typography.sectionTitle, marginBottom: spacing.lg },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },
+  dateBtn: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base },
+  dateBtnText: { fontSize: 16, color: foreground },
+  dateBtnPlaceholder: { color: mutedForeground },
   input: {
     borderWidth: 1,
     borderColor: border,
@@ -673,7 +826,17 @@ const styles = StyleSheet.create({
   },
   textArea: { minHeight: 60 },
   mutedText: { fontSize: 14, color: mutedForeground, marginBottom: spacing.base },
+  searchInput: { marginBottom: spacing.sm },
   toolList: { marginBottom: spacing.base },
+  toolListScroll: { maxHeight: 200, marginBottom: spacing.base },
+  toolsLoader: { paddingVertical: spacing.lg, alignItems: 'center' },
+  loadMoreLoader: { paddingVertical: spacing.sm, alignItems: 'center' },
+  loadMoreBtn: {
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
+  loadMoreBtnText: { fontSize: 14, fontWeight: '500', color: primary },
   toolRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

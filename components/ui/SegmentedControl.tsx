@@ -1,4 +1,5 @@
 import { card, foreground, muted, mutedForeground, radius, spacing } from '@/constants/theme';
+import { hapticSelection } from '@/utils/haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 export interface SegmentedOption {
@@ -21,7 +22,10 @@ export function SegmentedControl({ options, value, onChange }: SegmentedControlP
           <Pressable
             key={opt.value}
             style={[styles.btn, isActive && styles.btnActive]}
-            onPress={() => onChange(opt.value)}
+            onPress={() => {
+              hapticSelection();
+              onChange(opt.value);
+            }}
           >
             <Text style={[styles.btnText, isActive && styles.btnTextActive]}>
               {opt.label}

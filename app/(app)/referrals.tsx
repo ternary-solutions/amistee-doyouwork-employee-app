@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   Share,
   StyleSheet,
@@ -33,6 +34,7 @@ import { useNavigation } from 'expo-router';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonListCard } from '@/components/ui/Skeleton';
 
 const STATUS_COLORS: Record<string, string> = {
   New: '#3b82f6',
@@ -123,8 +125,14 @@ export default function ReferralsScreen() {
 
   if (loading && items.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={primary} />
+      <View style={[styles.skeletonContainer, { paddingBottom: spacing.xl + insets.bottom }]}>
+        <View style={styles.skeletonWrap}>
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+        </View>
       </View>
     );
   }
@@ -133,7 +141,11 @@ export default function ReferralsScreen() {
     <>
       {items.length === 0 ? (
         <View style={[styles.fill, { paddingBottom: insets.bottom }]}>
-          <EmptyState message="No referrals yet." />
+          <EmptyState
+            message="No referrals yet. Tap + to add one."
+            icon="person-add-outline"
+            action={{ label: 'Add referral', onPress: () => setModalOpen(true) }}
+          />
         </View>
       ) : (
         <FlatList
@@ -141,6 +153,9 @@ export default function ReferralsScreen() {
           keyExtractor={(r) => r.id}
           style={{ backgroundColor: background }}
           contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+          }
           renderItem={({ item }) => (
             <View style={styles.cardWrap}>
               <ListCard
@@ -201,6 +216,8 @@ export default function ReferralsScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  skeletonContainer: { flex: 1, backgroundColor: background },
+  skeletonWrap: { padding: spacing.base },
   fill: { flex: 1, backgroundColor: background },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   cardWrap: { marginBottom: spacing.md },

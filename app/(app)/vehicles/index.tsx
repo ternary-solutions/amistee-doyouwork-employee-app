@@ -1,36 +1,38 @@
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonListCard } from '@/components/ui/Skeleton';
 import {
-  background,
-  border,
-  card,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  primaryForeground,
-  radius,
-  spacing,
-  typography,
+    background,
+    border,
+    card,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    radius,
+    spacing,
+    typography,
 } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { vehiclesService } from '@/services/vehicles';
 import type { Vehicle } from '@/types/vehicles';
-import { getErrorMessage } from '@/utils/errorMessage';
 import { getMediaUrl } from '@/utils/api';
+import { getErrorMessage } from '@/utils/errorMessage';
+import { hapticImpact } from '@/utils/haptics';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    Alert,
+    FlatList,
+    Image,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function VehiclesListScreen() {
   const router = useRouter();
@@ -111,8 +113,17 @@ export default function VehiclesListScreen() {
 
   if (loading && vehicles.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={primary} />
+      <View style={[styles.skeletonContainer, { paddingBottom: spacing.xl + insets.bottom }]}>
+        <View style={styles.filterWrap}>
+          <View style={[styles.searchInput, { height: 44, backgroundColor: border }]} />
+        </View>
+        <View style={styles.skeletonWrap}>
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+        </View>
       </View>
     );
   }
@@ -124,11 +135,17 @@ export default function VehiclesListScreen() {
       style={{ backgroundColor: background }}
       ListHeaderComponent={renderHeader}
       contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
-      ListEmptyComponent={<EmptyState message="No vehicles found." />}
+      ListEmptyComponent={<EmptyState message="No vehicles found." icon="car-outline" />}
+      refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+      }
       renderItem={({ item }) => (
         <Pressable
           style={({ pressed }) => [styles.card, pressed && { opacity: 0.8 }]}
-          onPress={() => router.push(`/(app)/vehicles/${item.id}`)}
+          onPress={() => {
+            hapticImpact();
+            router.push(`/(app)/vehicles/${item.id}`);
+          }}
           accessibilityLabel={`${item.vehicle_name}, view details`}
           accessibilityRole="button"
         >
@@ -170,6 +187,8 @@ export default function VehiclesListScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  skeletonContainer: { flex: 1, backgroundColor: background },
+  skeletonWrap: { paddingHorizontal: spacing.base },
   filterWrap: { paddingHorizontal: spacing.base, paddingBottom: spacing.md },
   searchInput: {
     borderWidth: 1,
@@ -217,10 +236,10 @@ const styles = StyleSheet.create({
   },
   cardThumbEmoji: { fontSize: 24 },
   cardContent: { flex: 1 },
-  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 4 },
+  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 },
   cardTitle: { ...typography.title, color: foreground, flex: 1 },
   licensePlate: { fontSize: 12, color: mutedForeground, flexShrink: 0 },
-  meta: { fontSize: 13, color: mutedForeground, marginBottom: 2 },
+  meta: { fontSize: 13, color: mutedForeground, marginBottom: 6 },
   statusBadge: {
     marginTop: 6,
     alignSelf: 'flex-start',

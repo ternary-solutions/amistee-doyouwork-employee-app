@@ -17,6 +17,8 @@ import { usersService } from '@/services/users';
 import { useMainStore } from '@/store/main';
 import type { Preference } from '@/types/preferences';
 import { getMediaUrl, logout } from '@/utils/api';
+import { toast as showToast } from '@/utils/toast';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
@@ -71,6 +73,7 @@ export default function SettingsScreen() {
   const [editEmergencyName, setEditEmergencyName] = useState('');
   const [editEmergencyPhone, setEditEmergencyPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
+  const [showDobPicker, setShowDobPicker] = useState(false);
 
   const loadPreferences = useCallback(async () => {
     try {
@@ -114,6 +117,7 @@ export default function SettingsScreen() {
         expense_updates: preferences.expense_updates,
         spiff_notifications: preferences.spiff_notifications,
       });
+      showToast.success('Preferences saved.');
     } catch (error) {
       console.error('Failed to save preferences', error);
       Alert.alert('Error', 'Failed to save preferences. Please try again.');
@@ -215,7 +219,7 @@ export default function SettingsScreen() {
       setUploadingPhoto(true);
       const updatedUser = await usersService.updatePhoto(me.id, formData);
       setMe(updatedUser);
-      Alert.alert('Success', 'Profile photo updated successfully.');
+      showToast.success('Profile photo updated successfully.');
     } catch (error) {
       console.error('Failed to upload photo', error);
       Alert.alert('Error', 'Failed to upload photo. Please try again.');
@@ -412,13 +416,27 @@ export default function SettingsScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-              <Text style={styles.label}>Date of birth (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.input}
-                value={editDob}
-                onChangeText={setEditDob}
-                placeholder="2000-01-15"
-              />
+              <Text style={styles.label}>Date of birth</Text>
+              <Pressable
+                style={styles.dateBtn}
+                onPress={() => setShowDobPicker(true)}
+              >
+                <Text style={[styles.dateBtnText, !editDob && styles.dateBtnPlaceholder]}>
+                  {editDob ? formatDate(editDob) : 'Select date'}
+                </Text>
+              </Pressable>
+              {showDobPicker && (
+                <DateTimePicker
+                  value={editDob ? new Date(editDob + 'T12:00:00') : new Date('2000-01-01')}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  maximumDate={new Date()}
+                  onChange={(_, selectedDate) => {
+                    setShowDobPicker(Platform.OS === 'ios');
+                    if (selectedDate) setEditDob(selectedDate.toISOString().slice(0, 10));
+                  }}
+                />
+              )}
               <Text style={styles.label}>Emergency contact name</Text>
               <TextInput
                 style={styles.input}
@@ -502,7 +520,7 @@ function ToggleRow({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.base },
-  title: { ...typography.sectionTitle, color: foreground, marginBottom: spacing.xs },
+  title: { ...typography.sectionTitle, color: foreground, marginBottom: spacing.sm },
   subtitle: { fontSize: 14, color: mutedForeground, marginBottom: spacing.base },
   card: {
     backgroundColor: card,
@@ -535,8 +553,8 @@ const styles = StyleSheet.create({
   outlineBtnDisabled: { opacity: 0.6 },
   outlineBtnText: { fontSize: 14, fontWeight: '600', color: foreground },
   photoHint: { fontSize: 12, color: mutedForeground, marginTop: spacing.xs },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  sectionTitle: { ...typography.title, color: foreground, marginBottom: spacing.xs },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  sectionTitle: { ...typography.title, color: foreground, marginBottom: spacing.sm },
   editLink: { fontSize: 14, fontWeight: '600', color: primary },
   sectionDesc: { fontSize: 13, color: mutedForeground, marginBottom: spacing.md },
   infoRow: {
@@ -587,9 +605,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     maxHeight: '85%',
   },
-  modalTitle: { ...typography.sectionTitle, marginBottom: spacing.base },
+  modalTitle: { ...typography.sectionTitle, marginBottom: spacing.lg },
   modalScroll: { maxHeight: 400 },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 4, color: foreground },
+  dateBtn: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base },
+  dateBtnText: { fontSize: 16, color: foreground },
+  dateBtnPlaceholder: { color: mutedForeground },
   input: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base, fontSize: 16 },
   inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
   modalActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.base },

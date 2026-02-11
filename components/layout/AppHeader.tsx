@@ -1,15 +1,20 @@
 import {
-  primary,
-  primaryDark,
-  primaryForeground,
+    primary,
+    primaryDark,
+    primaryForeground,
 } from '@/constants/theme';
 import { useMainStore } from '@/store/main';
 import { getMediaUrl } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image as RNImage } from 'react-native';
 import { useRouter } from 'expo-router';
+import {
+    Pressable, Image as RNImage, StyleSheet,
+    Text,
+    View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type HeaderProps = {
   navigation: {
     goBack: () => void;
@@ -20,13 +25,6 @@ type HeaderProps = {
   route?: { name: string };
   options?: { title?: string };
 };
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const logoSource = require('../../assets/images/doyouwork-logo.png');
 
@@ -152,7 +150,7 @@ export function AppHeader({
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingBottom: 12,
+    paddingBottom: 16,
     paddingHorizontal: 8,
   },
   bar: {
@@ -215,13 +213,14 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     paddingHorizontal: 12,
-    paddingBottom: 4,
+    paddingTop: 4,
+    paddingBottom: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: primaryForeground,
-    marginBottom: 2,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,

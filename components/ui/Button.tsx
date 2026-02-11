@@ -8,12 +8,9 @@ import {
   spacing,
   mutedForeground,
 } from '@/constants/theme';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  type PressableProps,
-} from 'react-native';
+import { hapticImpact } from '@/utils/haptics';
+import { StyleSheet, Text, type PressableProps } from 'react-native';
+import { AnimatedPressable } from './AnimatedPressable';
 
 type ButtonVariant = 'primary' | 'accent' | 'outline' | 'ghost';
 
@@ -34,9 +31,12 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const isText = typeof children === 'string';
+  const handlePressIn = () => hapticImpact();
+
   return (
-    <Pressable
-      style={({ pressed }) => [
+    <AnimatedPressable
+      onPressIn={handlePressIn}
+      style={[
         styles.base,
         size === 'sm' ? styles.sm : styles.md,
         variant === 'primary' && styles.primary,
@@ -44,7 +44,7 @@ export function Button({
         variant === 'outline' && styles.outline,
         variant === 'ghost' && styles.ghost,
         pill && styles.pill,
-        pressed && styles.pressed,
+        style,
       ]}
       {...rest}
     >
@@ -64,7 +64,7 @@ export function Button({
       ) : (
         children
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 

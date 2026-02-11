@@ -4,6 +4,7 @@ import { UpcomingVacationCard } from '@/components/dashboard/UpcomingVacationCar
 import { WeekDaySelector } from '@/components/dashboard/WeekDaySelector';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { SkeletonScheduleCard } from '@/components/ui/Skeleton';
 import { scheduleService } from '@/services/schedules';
 import type { MyScheduleResponse } from '@/types/schedules';
 import { getMediaUrl } from '@/utils/api';
@@ -24,9 +25,9 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  ActivityIndicator,
   Alert,
   Image,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -70,6 +71,13 @@ export default function DashboardScreen() {
         style={[styles.scroll, { backgroundColor: background }]}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={loadSchedules}
+            tintColor={accent}
+          />
+        }
       >
         <WeekDaySelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
@@ -77,9 +85,11 @@ export default function DashboardScreen() {
           <DashboardNotifications />
 
           <Text style={styles.sectionTitle}>Schedule</Text>
-          {loading ? (
-            <View style={styles.loaderWrap}>
-              <ActivityIndicator size="large" color={accent} />
+          {loading && schedules.length === 0 ? (
+            <View style={styles.skeletonWrap}>
+              <SkeletonScheduleCard />
+              <SkeletonScheduleCard />
+              <SkeletonScheduleCard />
             </View>
           ) : schedules.length === 0 ? (
             <Card>
@@ -186,11 +196,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.sectionTitle,
     color: foreground,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   loaderWrap: {
     alignItems: 'center',
     marginVertical: spacing.lg,
+  },
+  skeletonWrap: {
+    gap: 0,
   },
   emptyText: {
     fontSize: 14,

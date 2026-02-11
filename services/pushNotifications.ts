@@ -3,7 +3,7 @@ import { useMainStore } from '@/store/main';
 import { deviceTokenService, type DevicePlatform } from '@/services/deviceTokens';
 
 const ROUTE_MAP: Record<string, string> = {
-  schedule: '/(app)/dashboard',
+  schedule: '/(app)/schedule',
   expense: '/(app)/expenses',
   spiff: '/(app)/spiffs',
   tool: '/(app)/tools',

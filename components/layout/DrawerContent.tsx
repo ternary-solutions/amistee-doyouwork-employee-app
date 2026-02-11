@@ -1,5 +1,6 @@
 import { clientInfo, menuGroups } from '@/constants/navigation';
 import { primary, primaryDark, primaryForeground } from '@/constants/theme';
+import { hapticImpact } from '@/utils/haptics';
 import { useMainStore } from '@/store/main';
 import { getMediaUrl, logout } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
 
   const handleNavigate = useCallback(
     (name: string) => {
+      hapticImpact();
       navigation.navigate(name as never);
       navigation.closeDrawer();
     },
@@ -33,6 +35,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
   );
 
   const handleMyAccount = useCallback(() => {
+    hapticImpact();
     navigation.closeDrawer();
     router.push('/(app)/settings');
   }, [navigation, router]);
@@ -180,8 +183,11 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
 
         {/* Sign out */}
         <Pressable
-          style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
-          onPress={handleSignOut}
+            style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
+            onPress={async () => {
+              hapticImpact();
+              await handleSignOut();
+            }}
         >
           <Ionicons name="log-out-outline" size={20} color={primaryForeground} />
           <Text style={styles.signOutText}>Sign Out</Text>
@@ -253,8 +259,8 @@ const styles = StyleSheet.create({
     color: primaryForeground,
   },
   group: {
-    marginTop: 12,
-    marginBottom: 4,
+    marginTop: 16,
+    marginBottom: 8,
   },
   groupLabel: {
     fontSize: 12,
@@ -262,7 +268,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
+    marginBottom: 12,
     paddingHorizontal: 8,
   },
   groupItems: {
@@ -302,8 +308,8 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    marginTop: 16,
-    marginBottom: 4,
+    marginTop: 20,
+    marginBottom: 12,
   },
   clientBadge: {
     flexDirection: 'row',

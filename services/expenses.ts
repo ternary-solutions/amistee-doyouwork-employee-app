@@ -25,6 +25,10 @@ export const expensesService = {
     );
   },
 
+  async getById(id: string): Promise<Expense> {
+    return apiRequest<unknown, Expense>(`expenses/${id}`, { method: 'GET' }, true, true);
+  },
+
   async create(data: ExpenseCreate): Promise<Expense> {
     return apiRequest<ExpenseCreate, Expense>('expenses/', { method: 'POST', data }, true, true);
   },

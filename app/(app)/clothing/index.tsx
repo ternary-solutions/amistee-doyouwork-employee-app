@@ -1,35 +1,34 @@
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonListCard } from '@/components/ui/Skeleton';
+import { FormModal } from '@/components/ui/FormModal';
+import { ListCard } from '@/components/ui/ListCard';
 import {
-  background,
-  border,
-  card,
-  destructive,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  primaryForeground,
-  radius,
-  spacing,
-  success,
-  typography,
+    background,
+    border,
+    destructive,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    radius,
+    spacing,
+    success,
 } from '@/constants/theme';
 import { clothingRequestsService } from '@/services/requests/clothings';
 import type { ClothingRequest } from '@/types/requests/clothings';
+import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    FlatList,
+    Pressable,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
-import { FormModal } from '@/components/ui/FormModal';
-import { ListCard } from '@/components/ui/ListCard';
-import { EmptyState } from '@/components/ui/EmptyState';
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: mutedForeground,
@@ -41,6 +40,7 @@ const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'] as const;
 
 export default function ClothingScreen() {
   const navigation = useNavigation();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<ClothingRequest[]>([]);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
@@ -104,8 +104,14 @@ export default function ClothingScreen() {
 
   if (loading && requests.length === 0) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={primary} />
+      <View style={[styles.skeletonContainer, { paddingBottom: spacing.xl + insets.bottom }]}>
+        <View style={styles.skeletonWrap}>
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+          <SkeletonListCard />
+        </View>
       </View>
     );
   }
@@ -114,7 +120,11 @@ export default function ClothingScreen() {
     <>
       {requests.length === 0 ? (
         <View style={[styles.fill, { paddingBottom: insets.bottom }]}>
-          <EmptyState message="No clothing requests yet." />
+          <EmptyState
+            message="No clothing requests yet. Tap + to add one."
+            icon="shirt-outline"
+            action={{ label: 'Request clothing', onPress: () => setModalOpen(true) }}
+          />
         </View>
       ) : (
         <FlatList
@@ -122,8 +132,14 @@ export default function ClothingScreen() {
           keyExtractor={(r) => r.id}
           style={{ backgroundColor: background }}
           contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+          }
           renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
+            <Pressable
+              style={styles.cardWrap}
+              onPress={() => router.push(`/(app)/clothing/${item.id}`)}
+            >
               <ListCard
                 title={item.clothing_type_name ?? 'Clothing'}
                 meta={[`Qty: ${item.quantity} · Size: ${item.size}`]}
@@ -131,7 +147,7 @@ export default function ClothingScreen() {
               >
                 {item.reason ? <Text style={styles.details} numberOfLines={2}>{item.reason}</Text> : null}
               </ListCard>
-            </View>
+            </Pressable>
           )}
         />
       )}
@@ -171,6 +187,8 @@ export default function ClothingScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  skeletonContainer: { flex: 1, backgroundColor: background },
+  skeletonWrap: { padding: spacing.base },
   fill: { flex: 1, backgroundColor: background },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   cardWrap: { marginBottom: spacing.md },

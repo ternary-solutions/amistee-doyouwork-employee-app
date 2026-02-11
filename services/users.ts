@@ -24,13 +24,19 @@ export const usersService = {
   async list(
     page = 1,
     limit = 20,
-    search?: string
+    role?: string,
+    search?: string,
+    user_type_id?: string,
+    location_id?: string
   ): Promise<UserList> {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
+    if (role) params.append('role', role);
     if (search) params.append('search', search);
+    if (user_type_id) params.append('user_type_id', user_type_id);
+    if (location_id) params.append('location_id', location_id);
     return apiRequest<unknown, UserList>(
       `users/?${params.toString()}`,
       { method: 'GET' },

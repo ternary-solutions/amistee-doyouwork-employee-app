@@ -16,7 +16,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import * as Sentry from "@sentry/react-native";
 
 Sentry.init({
-  dsn: "https://2227cb9ee6c27b046faee8ca5b9e8b6e@o4510673004527616.ingest.us.sentry.io/4510869750743040",
+  dsn: process.env.SENTRY_DSN,
 
   // Adds more context data to events (IP address, cookies, user, etc.)
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/

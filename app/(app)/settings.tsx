@@ -500,6 +500,7 @@ export default function SettingsScreen() {
               </Pressable>
               {showDobPicker && (
                 <DateTimePicker
+                  themeVariant={Platform.OS === "ios" ? "light" : undefined}
                   value={
                     editDob
                       ? new Date(editDob + "T12:00:00")

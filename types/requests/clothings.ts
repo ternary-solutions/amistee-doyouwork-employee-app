@@ -15,12 +15,15 @@ export type ClothingSize =
   | "34x32"
   | "36x32";
 
-/** A requestable clothing object (e.g. "Polo Shirt - M", "Safety Vest"). */
+/** A requestable clothing object (e.g. "Polo Shirt", "Safety Vest"). */
 export interface ClothingObject {
   id: string;
   name: string;
-  size?: string;
   type_name?: string;
+  /** Sizes available for this specific item. Used for size picker when creating a request. */
+  available_sizes?: string[];
+  /** Selected/requested size. Present when object is part of a request response. */
+  size?: string;
 }
 
 export interface ClothingRequest {

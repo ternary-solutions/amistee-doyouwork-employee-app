@@ -460,6 +460,7 @@ export default function SpiffsScreen() {
             value={date ? new Date(date + "T12:00:00") : new Date()}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
+            themeVariant={Platform.OS === "ios" ? "light" : undefined}
             minimumDate={subDays(startOfDay(new Date()), 90)}
             maximumDate={startOfDay(new Date())}
             onChange={(_, selectedDate) => {

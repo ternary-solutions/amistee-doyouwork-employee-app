@@ -21,7 +21,7 @@ function mapClothingApiItemToObject(item: ClothingApiItem): ClothingObject {
     id: item.id,
     name: item.item_name,
     type_name: item.clothing_type?.name,
-    size: item.available_sizes?.[0],
+    available_sizes: item.available_sizes ?? [],
   };
 }
 

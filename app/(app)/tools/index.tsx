@@ -799,6 +799,7 @@ export default function ToolsScreen() {
               }
               mode="date"
               display={Platform.OS === "ios" ? "spinner" : "default"}
+              themeVariant={Platform.OS === "ios" ? "light" : undefined}
               minimumDate={MIN_PICKUP_DATE}
               maximumDate={MAX_PICKUP_DATE}
               onChange={handleDateChange}

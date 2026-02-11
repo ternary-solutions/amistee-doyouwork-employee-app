@@ -14,7 +14,7 @@ import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
 import { timeOffRequestsService } from "@/services/requests/timeOffs";
 import type { TimeOffRequest } from "@/types/requests/timeOffs";
 import { getErrorMessage } from "@/utils/errorMessage";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, usePathname } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -33,12 +33,14 @@ function getStatusBadgeStyle(status: string): { bg: string; text: string } {
 
 export default function TimeOffDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const [request, setRequest] = useState<TimeOffRequest | null>(null);
   const [loading, setLoading] = useState(true);
 
   useSetHeaderOptions(
     useMemo(() => ({ title: "Time Off Request", showBack: true }), []),
+    pathname,
   );
 
   const load = useCallback(async () => {

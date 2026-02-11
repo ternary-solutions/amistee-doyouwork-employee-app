@@ -18,11 +18,7 @@ import {
 import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
 import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
 import { clothingRequestsService } from "@/services/requests/clothings";
-import type {
-    ClothingObject,
-    ClothingRequest,
-    ClothingSize,
-} from "@/types/requests/clothings";
+import type { ClothingObject, ClothingRequest } from "@/types/requests/clothings";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -38,21 +34,6 @@ import {
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const CLOTHING_SIZE_OPTIONS: ClothingSize[] = [
-  "XS",
-  "S",
-  "M",
-  "L",
-  "XL",
-  "XXL",
-  "XXXL",
-  "One Size",
-  "30x30",
-  "32x32",
-  "34x32",
-  "36x32",
-];
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: mutedForeground,
@@ -84,8 +65,8 @@ export default function ClothingScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const hasLoadedOnce = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [size, setSize] = useState<ClothingSize>("One Size");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [size, setSize] = useState<string>("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -140,27 +121,35 @@ export default function ClothingScreen() {
 
   useCloseModalOnDrawerOpen(() => setModalOpen(false));
 
-  const toggleObject = (objectId: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(objectId)) next.delete(objectId);
-      else next.add(objectId);
-      return next;
-    });
+  const selectedObject = objects.find((o) => o.id === selectedId) ?? null;
+  const availableSizes = selectedObject?.available_sizes?.length
+    ? selectedObject.available_sizes
+    : ["One Size"];
+
+  const selectObject = (objectId: string) => {
+    const isDeselecting = selectedId === objectId;
+    if (isDeselecting) {
+      setSelectedId(null);
+      setSize("");
+      return;
+    }
+    const obj = objects.find((o) => o.id === objectId);
+    setSelectedId(objectId);
+    setSize(obj?.available_sizes?.[0] ?? "One Size");
   };
 
   const handleCreate = async () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+    if (!selectedId || !size) return;
     try {
       setSubmitting(true);
       await clothingRequestsService.create({
-        clothing_object_ids: ids,
-        size,
+        clothing_object_ids: [selectedId],
+        size: size as import("@/types/requests/clothings").ClothingSize,
         reason: reason.trim() || undefined,
       });
       setModalOpen(false);
-      setSelectedIds(new Set());
+      setSelectedId(null);
+      setSize("");
       setReason("");
       load();
     } catch (error) {
@@ -257,42 +246,24 @@ export default function ClothingScreen() {
       </View>
       <FormModal
         visible={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedId(null);
+          setSize("");
+        }}
         title="New clothing request"
         submitLabel="Submit"
         submitting={submitting}
-        submitDisabled={selectedIds.size === 0}
+        submitDisabled={!selectedId || !size}
         onSubmit={handleCreate}
         contentMaxHeight="85%"
       >
-        <Text style={styles.label}>Size</Text>
-        <View style={styles.picker}>
-          {CLOTHING_SIZE_OPTIONS.map((s) => (
-            <Pressable
-              key={s}
-              style={[
-                styles.pickerOption,
-                size === s && styles.pickerOptionActive,
-              ]}
-              onPress={() => setSize(s)}
-            >
-              <Text
-                style={[
-                  styles.pickerOptionText,
-                  size === s && styles.pickerOptionTextActive,
-                ]}
-              >
-                {s}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
         <Text style={styles.label}>Select clothing</Text>
-        <Text style={styles.hint}>Choose one or more items to request.</Text>
+        <Text style={styles.hint}>Choose an item to request.</Text>
         <View style={styles.picker}>
           {objects.map((obj) => {
-            const selected = selectedIds.has(obj.id);
-            const label = obj.size ? `${obj.name} (${obj.size})` : obj.name;
+            const selected = selectedId === obj.id;
+            const label = obj.type_name ? `${obj.name} (${obj.type_name})` : obj.name;
             return (
               <Pressable
                 key={obj.id}
@@ -300,7 +271,7 @@ export default function ClothingScreen() {
                   styles.pickerOption,
                   selected && styles.pickerOptionActive,
                 ]}
-                onPress={() => toggleObject(obj.id)}
+                onPress={() => selectObject(obj.id)}
               >
                 <Text
                   style={[
@@ -314,6 +285,35 @@ export default function ClothingScreen() {
             );
           })}
         </View>
+        {selectedId ? (
+          <>
+            <Text style={styles.label}>Size</Text>
+            <Text style={styles.hint}>
+              Select a size for {selectedObject?.name ?? "this item"}.
+            </Text>
+            <View style={styles.picker}>
+              {availableSizes.map((s) => (
+                <Pressable
+                  key={s}
+                  style={[
+                    styles.pickerOption,
+                    size === s && styles.pickerOptionActive,
+                  ]}
+                  onPress={() => setSize(s)}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      size === s && styles.pickerOptionTextActive,
+                    ]}
+                  >
+                    {s}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        ) : null}
         {objects.length === 0 && !loading ? (
           <Text style={styles.emptyObjects}>
             No clothing items available to request.

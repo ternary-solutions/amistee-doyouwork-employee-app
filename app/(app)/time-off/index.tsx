@@ -322,6 +322,7 @@ export default function TimeOffScreen() {
             value={startDateObj}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
+            themeVariant={Platform.OS === "ios" ? "light" : undefined}
             minimumDate={minStartDate}
             onChange={(_, date) => {
               setShowStartPicker(Platform.OS === "android");
@@ -345,6 +346,7 @@ export default function TimeOffScreen() {
             value={endDateObj}
             mode="date"
             display={Platform.OS === "ios" ? "spinner" : "default"}
+            themeVariant={Platform.OS === "ios" ? "light" : undefined}
             minimumDate={minEndDate}
             maximumDate={maxEndDate}
             onChange={(_, date) => {

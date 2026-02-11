@@ -21,6 +21,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -133,11 +135,17 @@ export default function VehicleRequestDetailScreen() {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: background }]}
-      contentContainerStyle={[styles.content, { paddingBottom: spacing.xl + insets.bottom }]}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
+      <ScrollView
+        style={[styles.container, { backgroundColor: background }]}
+        contentContainerStyle={[styles.content, { paddingBottom: spacing.xl + insets.bottom }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={styles.title}>Repair request</Text>
       <Text style={styles.meta}>
         Vehicle: {request.vehicle?.vehicle_name ?? id} ·{' '}
@@ -195,7 +203,8 @@ export default function VehicleRequestDetailScreen() {
           </Text>
         </Pressable>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -1,7 +1,6 @@
 import { primary, primaryDark, primaryForeground } from "@/constants/theme";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useMainStore } from "@/store/main";
-import { getMediaSource } from "@/utils/api";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { usePathname, useRouter } from "expo-router";
@@ -60,7 +59,7 @@ function getParentPath(pathname: string): string | null {
   return parent || null;
 }
 
-const BREADCRUMB_SEP = ' › ';
+const BREADCRUMB_SEP = " › ";
 
 export function AppHeader({
   navigation,
@@ -115,10 +114,10 @@ export function AppHeader({
   };
 
   const goToDashboard = () => router.replace("/(app)/dashboard");
-  const goToSettings = () => router.push("/(app)/settings");
+  // const goToSettings = () => router.push("/(app)/settings");
   const goToNotifications = () => router.push("/(app)/notifications");
 
-  const avatarSource = getMediaSource(me?.photo_url);
+  // const avatarSource = getMediaSource(me?.photo_url);
 
   return (
     <LinearGradient
@@ -200,7 +199,10 @@ export function AppHeader({
         </View>
       </View>
 
-      {(title || subtitle || (breadcrumbs && breadcrumbs.length > 0) || headerAction) ? (
+      {title ||
+      subtitle ||
+      (breadcrumbs && breadcrumbs.length > 0) ||
+      headerAction ? (
         <View style={styles.titleBlock}>
           <View style={styles.titleTextWrap}>
             {breadcrumbs && breadcrumbs.length > 0 ? (

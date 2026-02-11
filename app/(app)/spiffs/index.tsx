@@ -23,9 +23,10 @@ import type { Spiff } from "@/types/spiffs";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { format, startOfDay, subDays } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -36,7 +37,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -112,6 +112,16 @@ export default function SpiffsScreen() {
       setDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
     }
   }, [modalOpen, date]);
+
+  // Dismiss create modal when navigating away (e.g. via hamburger menu)
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setModalOpen(false);
+        setShowDatePicker(false);
+      };
+    }, []),
+  );
 
   useSetHeaderOptions(
     useMemo(
@@ -362,7 +372,7 @@ export default function SpiffsScreen() {
           />
         )}
         <Text style={styles.label}>Amount</Text>
-        <TextInput
+        <BottomSheetTextInput
           style={styles.input}
           value={amount}
           onChangeText={setAmount}
@@ -370,7 +380,7 @@ export default function SpiffsScreen() {
           keyboardType="decimal-pad"
         />
         <Text style={styles.label}>Details (optional)</Text>
-        <TextInput
+        <BottomSheetTextInput
           style={[styles.input, styles.textArea]}
           value={details}
           onChangeText={setDetails}

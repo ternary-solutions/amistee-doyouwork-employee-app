@@ -27,6 +27,7 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    KeyboardAvoidingView,
     Modal,
     Platform,
     Pressable,
@@ -390,7 +391,10 @@ export default function SettingsScreen() {
       {/* Edit Personal Info Modal */}
       <Modal visible={editModalOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContent}
+          >
             <Text style={styles.modalTitle}>Edit Personal Information</Text>
             <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalScroll}>
               <Text style={styles.label}>First name</Text>
@@ -481,7 +485,7 @@ export default function SettingsScreen() {
                 <Text style={styles.submitBtnText}>{editSaving ? 'Saving...' : 'Save'}</Text>
               </Pressable>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </ScrollView>

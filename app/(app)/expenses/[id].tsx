@@ -24,6 +24,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -131,11 +133,17 @@ export default function ExpenseDetailScreen() {
   const statusStyle = getStatusBadgeStyle(expense.status);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: background }}
-      contentContainerStyle={[styles.container, { paddingBottom: spacing.xl + insets.bottom }]}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.container, { paddingBottom: spacing.xl + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.card}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>{expense.expense_type?.name ?? 'Expense'}</Text>
@@ -235,7 +243,8 @@ export default function ExpenseDetailScreen() {
         url={docViewer?.url ?? null}
         title={docViewer?.title ?? ''}
       />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

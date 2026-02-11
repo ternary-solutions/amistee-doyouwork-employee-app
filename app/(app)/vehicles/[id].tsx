@@ -27,7 +27,9 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -271,7 +273,10 @@ export default function VehicleDetailScreen() {
 
       <Modal visible={createModalOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContent}
+          >
             <Text style={styles.modalTitle}>New maintenance request</Text>
             <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.label}>Description</Text>
@@ -308,7 +313,7 @@ export default function VehicleDetailScreen() {
                 <Text style={styles.submitBtnText}>{submitting ? 'Submitting...' : 'Submit'}</Text>
               </Pressable>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </ScrollView>

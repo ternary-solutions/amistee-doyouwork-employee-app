@@ -28,6 +28,7 @@ import type { ToolRequest, ToolRequestLineItem } from "@/types/requests/tools";
 import type { Tool } from "@/types/tools";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format, startOfDay } from "date-fns";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
@@ -36,6 +37,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -274,6 +276,15 @@ export default function ToolsScreen() {
         });
         setCreateModalOpen(true);
       }
+      // Dismiss all modals/sheets when navigating away (e.g. via hamburger menu)
+      return () => {
+        setCreateModalOpen(false);
+        setReturnModalOpen(false);
+        setReturnRequest(null);
+        setDetailSheetOpen(false);
+        setSelectedRequest(null);
+        setShowPickupDatePicker(false);
+      };
     }, [consumeCatalogPending]),
   );
 
@@ -611,7 +622,7 @@ export default function ToolsScreen() {
       >
         <Text style={styles.label}>Select tools</Text>
         <View style={styles.comboboxRow}>
-          <TextInput
+          <BottomSheetTextInput
             style={[styles.input, styles.searchInput]}
             value={createToolsSearch}
             onChangeText={setCreateToolsSearch}
@@ -792,7 +803,7 @@ export default function ToolsScreen() {
         )}
 
         <Text style={styles.label}>Comment (optional)</Text>
-        <TextInput
+        <BottomSheetTextInput
           style={[styles.input, styles.textArea]}
           value={createMessage}
           onChangeText={setCreateMessage}
@@ -804,7 +815,10 @@ export default function ToolsScreen() {
 
       <Modal visible={returnModalOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalContent}
+          >
             <Text style={styles.modalTitle}>
               {returnRequest
                 ? (returnRequest.tool?.tool_name ??
@@ -890,7 +904,7 @@ export default function ToolsScreen() {
                 </View>
               </>
             )}
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 

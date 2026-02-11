@@ -26,10 +26,11 @@ import { toast as showToast } from '@/utils/toast';
 import { hapticImpact } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { format, startOfDay, subDays } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
 import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
@@ -40,7 +41,6 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,6 +108,16 @@ export default function ExpensesScreen() {
     load();
   }, [load]);
 
+  // Dismiss create modal when navigating away (e.g. via hamburger menu)
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setModalOpen(false);
+        setShowDatePicker(false);
+      };
+    }, []),
+  );
+
   // Prefill date to today when opening create modal
   useEffect(() => {
     if (modalOpen && !date) {
@@ -162,7 +172,16 @@ export default function ExpensesScreen() {
   }, []);
 
   const handleCreate = async () => {
-    if (!typeId || !date || !amount.trim() || !details.trim()) return;
+    if (!typeId || !date || !amount.trim()) return;
+    const amountNum = parseFloat(amount.replace(/,/g, '').trim());
+    if (Number.isNaN(amountNum) || amountNum <= 0) {
+      Alert.alert('Invalid amount', 'Please enter a valid amount greater than 0.');
+      return;
+    }
+    if (amountNum > 50000) {
+      Alert.alert('Invalid amount', 'Amount cannot exceed $50,000.');
+      return;
+    }
     try {
       setSubmitting(true);
       let attachmentUrl: string | undefined;
@@ -189,8 +208,8 @@ export default function ExpensesScreen() {
       await expensesService.create({
         expense_type_id: typeId,
         expense_date: date,
-        amount: Number(amount),
-        details: details,
+        amount: amountNum,
+        details: details.trim() || '',
         ...(attachmentUrl && { attachment_url: attachmentUrl }),
       });
       setModalOpen(false);
@@ -356,9 +375,9 @@ export default function ExpensesScreen() {
           />
         )}
         <Text style={styles.label}>Amount</Text>
-        <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="0" placeholderTextColor={mutedForeground} keyboardType="decimal-pad" />
+        <BottomSheetTextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="0" placeholderTextColor={mutedForeground} keyboardType="decimal-pad" />
         <Text style={styles.label}>Details</Text>
-        <TextInput style={[styles.input, styles.textArea]} value={details} onChangeText={setDetails} placeholder="Description" placeholderTextColor={mutedForeground} multiline />
+        <BottomSheetTextInput style={[styles.input, styles.textArea]} value={details} onChangeText={setDetails} placeholder="Description" placeholderTextColor={mutedForeground} multiline />
         <Text style={styles.label}>Attachment (optional)</Text>
         <View style={styles.attachmentRow}>
           <Pressable

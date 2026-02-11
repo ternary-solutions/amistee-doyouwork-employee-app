@@ -9,7 +9,7 @@ type ListCardProps = {
   subtitle?: string;
   /** Extra lines or content below title (e.g. date, meta) */
   meta?: string | string[];
-  badge?: { text: string; backgroundColor?: string };
+  badge?: { text: string; backgroundColor?: string; textColor?: string };
   onPress?: () => void;
   children?: React.ReactNode;
 };
@@ -28,7 +28,7 @@ export function ListCard({ title, subtitle, meta, badge, onPress, children }: Li
       </View>
       {badge ? (
         <View style={[styles.badge, badge.backgroundColor ? { backgroundColor: badge.backgroundColor } : undefined]}>
-          <Text style={styles.badgeText}>{badge.text}</Text>
+          <Text style={[styles.badgeText, badge.textColor ? { color: badge.textColor } : undefined]}>{badge.text}</Text>
         </View>
       ) : null}
     </View>

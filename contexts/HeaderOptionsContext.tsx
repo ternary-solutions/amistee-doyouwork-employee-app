@@ -2,7 +2,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useState,
   type ReactNode,
@@ -37,15 +36,13 @@ function normalizePath(p: string): string {
     .toLowerCase();
 }
 
-/** Call from screens that want to set title, subtitle, headerAction, showBack in the header. Clears on unmount. Options are only applied when the current route matches this screen (so still-mounted drawer screens can't overwrite the header). We use useEffect for applying so that when navigating back (e.g. from catalog to tools index) the screen has the updated pathname and its options are accepted. Pass a stable options object (e.g. useMemo) to avoid unnecessary effect runs. */
+/** Call from screens that want to set title, subtitle, headerAction, showBack in the header. Clears on unmount. Options are only applied when the current route matches this screen (so still-mounted drawer screens can't overwrite the header). We use useLayoutEffect so options are applied before paint and the header updates correctly when navigating. Pass a stable options object (e.g. useMemo) to avoid unnecessary effect runs. */
 export function useSetHeaderOptions(options: HeaderOptions | null) {
   const pathname = usePathname();
   const { setOptions } = useContext(HeaderOptionsContext) ?? {};
   useLayoutEffect(() => {
-    return () => setOptions?.(null, pathname);
-  }, [setOptions, pathname]);
-  useEffect(() => {
     setOptions?.(options, pathname);
+    return () => setOptions?.(null, pathname);
   }, [setOptions, options, pathname]);
 }
 
@@ -59,13 +56,8 @@ export function HeaderOptionsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [options, setOptionsState] = useState<HeaderOptions | null>(null);
 
-  // When the route changes, clear context so the header falls back to drawer/route options.
-  useLayoutEffect(() => {
-    setOptionsState(null);
-  }, [pathname]);
-
-  // Only apply when caller's pathname matches current route (prevents still-mounted screens like Clothing from overwriting).
-  // Use normalized paths so "/(app)/tools" and "/tools" are treated as the same route.
+  // Only apply when caller's pathname matches current route (prevents still-mounted screens from overwriting).
+  // Don't clear on pathname change so the new screen can set its options and the header updates correctly when navigating.
   const setOptions = useCallback((o: HeaderOptions | null, callerPathname?: string) => {
     setOptionsState((prev) => {
       if (callerPathname != null && normalizePath(callerPathname) !== normalizePath(pathname)) return prev;

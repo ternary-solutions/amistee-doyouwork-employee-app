@@ -1,7 +1,11 @@
+import { EmptyState } from "@/components/ui/EmptyState";
+import { FormModal } from "@/components/ui/FormModal";
+import { ListCard } from "@/components/ui/ListCard";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { SkeletonListCard } from "@/components/ui/Skeleton";
 import {
   background,
   border,
-  destructive,
   foreground,
   muted,
   mutedForeground,
@@ -9,17 +13,18 @@ import {
   primaryForeground,
   radius,
   spacing,
-  success,
-} from '@/constants/theme';
-import { timeOffRequestsService } from '@/services/requests/timeOffs';
-import { getErrorMessage } from '@/utils/errorMessage';
-import { toast as showToast } from '@/utils/toast';
-import type { TimeOffRequest } from '@/types/requests/timeOffs';
-import { addDays, format, startOfDay } from 'date-fns';
-import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+  statusBadge,
+} from "@/constants/theme";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { timeOffRequestsService } from "@/services/requests/timeOffs";
+import type { TimeOffRequest } from "@/types/requests/timeOffs";
+import { getErrorMessage } from "@/utils/errorMessage";
+import { toast as showToast } from "@/utils/toast";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { addDays, format, startOfDay } from "date-fns";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -28,50 +33,59 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FormModal } from '@/components/ui/FormModal';
-import { ListCard } from '@/components/ui/ListCard';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonListCard } from '@/components/ui/Skeleton';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const TYPES: Array<'Vacation' | 'Sick' | 'Personal'> = ['Vacation', 'Sick', 'Personal'];
-const STATUS_COLORS: Record<string, string> = {
-  Pending: mutedForeground,
-  Approved: success,
-  Denied: destructive,
-};
+const TYPES: ("Vacation" | "Sick" | "Personal")[] = [
+  "Vacation",
+  "Sick",
+  "Personal",
+];
+function getStatusBadgeStyle(status: string): { bg: string; text: string } {
+  const s = statusBadge[status as keyof typeof statusBadge];
+  return s ?? { bg: mutedForeground, text: primaryForeground };
+}
 
-type Filter = 'open' | 'closed';
+type Filter = "open" | "closed";
 
 function getTodayYMD(): string {
-  return format(startOfDay(new Date()), 'yyyy-MM-dd');
+  return format(startOfDay(new Date()), "yyyy-MM-dd");
 }
 
 export default function TimeOffScreen() {
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<Filter>('open');
+  const [filter, setFilter] = useState<Filter>("open");
   const [modalOpen, setModalOpen] = useState(false);
-  const [entityType, setEntityType] = useState<'Vacation' | 'Sick' | 'Personal'>('Vacation');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [entityType, setEntityType] = useState<
+    "Vacation" | "Sick" | "Personal"
+  >("Vacation");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const todayYMD = getTodayYMD();
-  const startDateObj = startDate ? new Date(startDate + 'T12:00:00') : new Date(todayYMD + 'T12:00:00');
-  const endDateObj = endDate ? new Date(endDate + 'T12:00:00') : new Date(todayYMD + 'T12:00:00');
+  const startDateObj = startDate
+    ? new Date(startDate + "T12:00:00")
+    : new Date(todayYMD + "T12:00:00");
+  const endDateObj = endDate
+    ? new Date(endDate + "T12:00:00")
+    : new Date(todayYMD + "T12:00:00");
   const minStartDate = startOfDay(new Date());
-  const minEndDate = startDate ? startOfDay(new Date(startDate + 'T12:00:00')) : minStartDate;
-  const maxEndDate = startDate ? addDays(new Date(startDate + 'T12:00:00'), 365) : addDays(new Date(), 365);
+  const minEndDate = startDate
+    ? startOfDay(new Date(startDate + "T12:00:00"))
+    : minStartDate;
+  const maxEndDate = startDate
+    ? addDays(new Date(startDate + "T12:00:00"), 365)
+    : addDays(new Date(), 365);
 
   const filteredRequests = requests.filter((r) =>
-    filter === 'open' ? r.status === 'Pending' : r.status === 'Approved' || r.status === 'Denied'
+    filter === "open"
+      ? r.status === "Pending"
+      : r.status === "Approved" || r.status === "Denied",
   );
 
   const load = useCallback(async () => {
@@ -80,8 +94,14 @@ export default function TimeOffScreen() {
       const res = await timeOffRequestsService.list(1, 50);
       setRequests(res?.items ?? []);
     } catch (error) {
-      console.error('Failed to load time off requests', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to load time off requests. Please try again.'));
+      console.error("Failed to load time off requests", error);
+      Alert.alert(
+        "Error",
+        getErrorMessage(
+          error,
+          "Failed to load time off requests. Please try again.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -90,6 +110,17 @@ export default function TimeOffScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Dismiss create modal when navigating away (e.g. via hamburger menu)
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setModalOpen(false);
+        setShowStartPicker(false);
+        setShowEndPicker(false);
+      };
+    }, []),
+  );
 
   // Prefill start/end to today when opening the modal
   useEffect(() => {
@@ -109,30 +140,43 @@ export default function TimeOffScreen() {
   useSetHeaderOptions(
     useMemo(
       () => ({
-        title: 'Time Off',
-        subtitle: 'Request vacation, sick, or personal time off.',
+        title: "Time Off",
+        subtitle: "Request vacation, sick, or personal time off.",
         showBack: false,
-        headerAction: { label: 'New time off request', onPress: () => setModalOpen(true) },
+        headerAction: {
+          label: "New time off request",
+          onPress: () => setModalOpen(true),
+        },
       }),
-      []
-    )
+      [],
+    ),
   );
 
   const handleCreate = async () => {
     if (!startDate.trim() || !endDate.trim()) return;
     try {
       setSubmitting(true);
-      await timeOffRequestsService.create({ entity_type: entityType, start_date: startDate, end_date: endDate });
+      await timeOffRequestsService.create({
+        entity_type: entityType,
+        start_date: startDate,
+        end_date: endDate,
+      });
       setModalOpen(false);
-      setStartDate('');
-      setEndDate('');
+      setStartDate("");
+      setEndDate("");
       setShowStartPicker(false);
       setShowEndPicker(false);
-      showToast.success('Time off request submitted.');
+      showToast.success("Time off request submitted.");
       load();
     } catch (error) {
-      console.error('Create time off failed', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to submit time off request. Please try again.'));
+      console.error("Create time off failed", error);
+      Alert.alert(
+        "Error",
+        getErrorMessage(
+          error,
+          "Failed to submit time off request. Please try again.",
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -142,7 +186,11 @@ export default function TimeOffScreen() {
     return (
       <ScrollView
         style={[styles.scroll, { backgroundColor: background }]}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xl + insets.bottom }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: spacing.xl + insets.bottom },
+          { paddingTop: insets.top },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.skeletonPlaceholder} />
@@ -161,13 +209,24 @@ export default function TimeOffScreen() {
     <>
       <ScrollView
         style={[styles.scroll, { backgroundColor: background }]}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xl + insets.bottom }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: spacing.xl + insets.bottom },
+          { paddingTop: 16 },
+        ]}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={load}
+            tintColor={primary}
+          />
         }
       >
         <SegmentedControl
-          options={[{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed' }]}
+          options={[
+            { value: "open", label: "Open" },
+            { value: "closed", label: "Closed" },
+          ]}
           value={filter}
           onChange={(v) => setFilter(v as Filter)}
         />
@@ -176,10 +235,16 @@ export default function TimeOffScreen() {
           <EmptyState
             message="No time off requests yet. Tap the button below to request time off."
             icon="calendar-outline"
-            action={{ label: 'Request time off', onPress: () => setModalOpen(true) }}
+            action={{
+              label: "Request time off",
+              onPress: () => setModalOpen(true),
+            }}
           />
         ) : filteredRequests.length === 0 ? (
-          <EmptyState message={`No ${filter === 'open' ? 'open' : 'closed'} time off requests.`} icon="calendar-outline" />
+          <EmptyState
+            message={`No ${filter === "open" ? "open" : "closed"} time off requests.`}
+            icon="calendar-outline"
+          />
         ) : (
           filteredRequests.map((item) => (
             <View key={item.id} style={styles.cardWrap}>
@@ -189,7 +254,11 @@ export default function TimeOffScreen() {
                   `${new Date(item.start_date).toLocaleDateString()} – ${new Date(item.end_date).toLocaleDateString()}`,
                   `${item.time_off_days} day(s)`,
                 ]}
-                badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? '#94a3b8' }}
+                badge={{
+                  text: item.status,
+                  backgroundColor: getStatusBadgeStyle(item.status).bg,
+                  textColor: getStatusBadgeStyle(item.status).text,
+                }}
               />
             </View>
           ))
@@ -206,25 +275,44 @@ export default function TimeOffScreen() {
         <Text style={styles.label}>Type</Text>
         <View style={styles.picker}>
           {TYPES.map((t) => (
-            <Pressable key={t} style={[styles.pickerOption, entityType === t && styles.pickerOptionActive]} onPress={() => setEntityType(t)}>
-              <Text style={[styles.pickerOptionText, entityType === t && styles.pickerOptionTextActive]}>{t}</Text>
+            <Pressable
+              key={t}
+              style={[
+                styles.pickerOption,
+                entityType === t && styles.pickerOptionActive,
+              ]}
+              onPress={() => setEntityType(t)}
+            >
+              <Text
+                style={[
+                  styles.pickerOptionText,
+                  entityType === t && styles.pickerOptionTextActive,
+                ]}
+              >
+                {t}
+              </Text>
             </Pressable>
           ))}
         </View>
         <Text style={styles.label}>Start date</Text>
-        <Pressable style={styles.dateBtn} onPress={() => setShowStartPicker(true)}>
-          <Text style={styles.dateBtnText}>{startDate || 'Select start date'}</Text>
+        <Pressable
+          style={styles.dateBtn}
+          onPress={() => setShowStartPicker(true)}
+        >
+          <Text style={styles.dateBtnText}>
+            {startDate || "Select start date"}
+          </Text>
         </Pressable>
         {showStartPicker && (
           <DateTimePicker
             value={startDateObj}
             mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            display={Platform.OS === "ios" ? "spinner" : "default"}
             minimumDate={minStartDate}
             onChange={(_, date) => {
-              setShowStartPicker(Platform.OS === 'android');
+              setShowStartPicker(Platform.OS === "android");
               if (date) {
-                const ymd = format(date, 'yyyy-MM-dd');
+                const ymd = format(date, "yyyy-MM-dd");
                 setStartDate(ymd);
                 if (endDate && endDate < ymd) setEndDate(ymd);
               }
@@ -232,19 +320,22 @@ export default function TimeOffScreen() {
           />
         )}
         <Text style={styles.label}>End date</Text>
-        <Pressable style={styles.dateBtn} onPress={() => setShowEndPicker(true)}>
-          <Text style={styles.dateBtnText}>{endDate || 'Select end date'}</Text>
+        <Pressable
+          style={styles.dateBtn}
+          onPress={() => setShowEndPicker(true)}
+        >
+          <Text style={styles.dateBtnText}>{endDate || "Select end date"}</Text>
         </Pressable>
         {showEndPicker && (
           <DateTimePicker
             value={endDateObj}
             mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            display={Platform.OS === "ios" ? "spinner" : "default"}
             minimumDate={minEndDate}
             maximumDate={maxEndDate}
             onChange={(_, date) => {
-              setShowEndPicker(Platform.OS === 'android');
-              if (date) setEndDate(format(date, 'yyyy-MM-dd'));
+              setShowEndPicker(Platform.OS === "android");
+              if (date) setEndDate(format(date, "yyyy-MM-dd"));
             }}
           />
         )}
@@ -254,19 +345,47 @@ export default function TimeOffScreen() {
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.base, paddingBottom: spacing.xl },
   skeletonPlaceholder: { height: 52, marginBottom: spacing.base },
   skeletonWrap: { paddingHorizontal: spacing.base },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   cardWrap: { marginBottom: spacing.md },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },
-  dateBtn: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base },
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 6,
+    color: foreground,
+  },
+  dateBtn: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+  },
   dateBtnText: { fontSize: 16, color: foreground },
-  input: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base, fontSize: 16 },
-  picker: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.base },
-  pickerOption: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.sm, backgroundColor: muted },
+  input: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+    fontSize: 16,
+  },
+  picker: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  pickerOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: muted,
+  },
   pickerOptionActive: { backgroundColor: primary },
   pickerOptionText: { fontSize: 14, color: foreground },
   pickerOptionTextActive: { color: primaryForeground },

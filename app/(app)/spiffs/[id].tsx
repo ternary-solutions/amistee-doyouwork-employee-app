@@ -27,6 +27,8 @@ import {
     ActivityIndicator,
     Alert,
     Image,
+    KeyboardAvoidingView,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -137,11 +139,17 @@ export default function SpiffDetailScreen() {
   const attachments = spiff.attachment_urls ?? [];
 
   return (
-    <ScrollView
-      style={{ backgroundColor: background }}
-      contentContainerStyle={[styles.container, { paddingBottom: spacing.xl + insets.bottom }]}
-      showsVerticalScrollIndicator={false}
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.container, { paddingBottom: spacing.xl + insets.bottom }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.card}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>{spiff.spiff_type?.name ?? 'Spiff'}</Text>
@@ -244,7 +252,8 @@ export default function SpiffDetailScreen() {
         url={docViewer?.url ?? null}
         title={docViewer?.title ?? ''}
       />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

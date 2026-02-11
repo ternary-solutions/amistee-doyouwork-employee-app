@@ -24,7 +24,7 @@ import type {
 } from "@/types/requests/clothings";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
@@ -105,6 +105,13 @@ export default function ClothingScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Dismiss create modal when navigating away (e.g. via hamburger menu)
+  useFocusEffect(
+    useCallback(() => {
+      return () => setModalOpen(false);
+    }, []),
+  );
 
   useSetHeaderOptions(
     useMemo(

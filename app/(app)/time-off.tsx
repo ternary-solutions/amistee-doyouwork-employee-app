@@ -84,6 +84,12 @@ export default function TimeOffScreen() {
     load();
   }, [load]);
 
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerAction: { label: 'New time off request', onPress: () => setModalOpen(true) },
+    });
+  }, [navigation]);
+
   const handleCreate = async () => {
     if (!startDate.trim() || !endDate.trim()) return;
     try {

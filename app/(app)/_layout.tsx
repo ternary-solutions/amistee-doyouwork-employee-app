@@ -7,6 +7,7 @@ export default function AppLayout() {
     <Drawer
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
+        drawerStyle: { width: '85%', maxWidth: 360 },
         headerShown: true,
         header: (props) => (
           <AppHeader

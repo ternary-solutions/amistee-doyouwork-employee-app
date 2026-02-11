@@ -38,3 +38,23 @@ export interface SpiffCreate {
   details?: string | null;
   attachment_urls?: string[];
 }
+
+export interface SpiffSummary {
+  total_earned: number | string;
+  total_spiffs: number;
+  active_spiffs: number;
+  approved_spiffs: number;
+}
+
+export interface SpiffComment {
+  id: string;
+  spiff_id: string;
+  user: { id: string; first_name: string; last_name: string | null; email: string };
+  comment: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpiffCommentCreate {
+  comment: string;
+}

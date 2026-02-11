@@ -36,22 +36,16 @@ export default function ResourcesScreen() {
   const [items, setItems] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
-  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [filter, setFilter] = useState<string>('');
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
   const [docViewer, setDocViewer] = useState<{ url: string; title: string } | null>(null);
 
-  const categories = useMemo(() => {
-    const names = items
-      .map((r) => r.resource_category?.name)
-      .filter((n): n is string => Boolean(n));
-    return Array.from(new Set(names)).sort();
-  }, [items]);
-
-  const types = useMemo(() => {
-    const names = items
-      .map((r) => r.resource_type?.name)
-      .filter((n): n is string => Boolean(n));
+  // Combined filter options from both category and type (deduplicated)
+  const filterOptions = useMemo(() => {
+    const names = items.flatMap((r) => [
+      r.resource_category?.name,
+      r.resource_type?.name,
+    ].filter((n): n is string => Boolean(n)));
     return Array.from(new Set(names)).sort();
   }, [items]);
 
@@ -83,11 +77,13 @@ export default function ResourcesScreen() {
 
   const filteredItems = useMemo(() => {
     return items.filter((r) => {
-      const matchesCategory = !categoryFilter || r.resource_category?.name === categoryFilter;
-      const matchesType = !typeFilter || r.resource_type?.name === typeFilter;
-      return matchesCategory && matchesType;
+      if (!filter) return true;
+      return (
+        r.resource_category?.name === filter ||
+        r.resource_type?.name === filter
+      );
     });
-  }, [items, categoryFilter, typeFilter]);
+  }, [items, filter]);
 
   const renderHeader = () => (
     <View style={styles.searchWrap}>
@@ -100,50 +96,28 @@ export default function ResourcesScreen() {
         autoCapitalize="none"
         autoCorrect={false}
       />
-      {categories.length > 0 && (
+      {filterOptions.length > 0 && items.length > 0 ? (
         <View style={styles.chipsWrap}>
-          <Text style={styles.chipsLabel}>Category</Text>
+          <Text style={styles.chipsLabel}>Filter</Text>
           <View style={styles.chipsRow}>
             <Pressable
-              style={[styles.chip, !categoryFilter && styles.chipActive]}
-              onPress={() => setCategoryFilter('')}
+              style={[styles.chip, !filter && styles.chipActive]}
+              onPress={() => setFilter('')}
             >
-              <Text style={[styles.chipText, !categoryFilter && styles.chipTextActive]}>All</Text>
+              <Text style={[styles.chipText, !filter && styles.chipTextActive]}>All</Text>
             </Pressable>
-            {categories.map((c) => (
+            {filterOptions.map((opt) => (
               <Pressable
-                key={c}
-                style={[styles.chip, categoryFilter === c && styles.chipActive]}
-                onPress={() => setCategoryFilter(categoryFilter === c ? '' : c)}
+                key={opt}
+                style={[styles.chip, filter === opt && styles.chipActive]}
+                onPress={() => setFilter(filter === opt ? '' : opt)}
               >
-                <Text style={[styles.chipText, categoryFilter === c && styles.chipTextActive]}>{c}</Text>
+                <Text style={[styles.chipText, filter === opt && styles.chipTextActive]}>{opt}</Text>
               </Pressable>
             ))}
           </View>
         </View>
-      )}
-      {types.length > 0 && (
-        <View style={styles.chipsWrap}>
-          <Text style={styles.chipsLabel}>Type</Text>
-          <View style={styles.chipsRow}>
-            <Pressable
-              style={[styles.chip, !typeFilter && styles.chipActive]}
-              onPress={() => setTypeFilter('')}
-            >
-              <Text style={[styles.chipText, !typeFilter && styles.chipTextActive]}>All</Text>
-            </Pressable>
-            {types.map((t) => (
-              <Pressable
-                key={t}
-                style={[styles.chip, typeFilter === t && styles.chipActive]}
-                onPress={() => setTypeFilter(typeFilter === t ? '' : t)}
-              >
-                <Text style={[styles.chipText, typeFilter === t && styles.chipTextActive]}>{t}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      )}
+      ) : null}
     </View>
   );
 
@@ -172,7 +146,16 @@ export default function ResourcesScreen() {
         style={{ backgroundColor: background }}
         ListHeaderComponent={renderHeader}
         contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
-        ListEmptyComponent={<EmptyState message="No resources found." icon="library-outline" />}
+        ListEmptyComponent={
+          <EmptyState
+            message={
+              filter
+                ? 'No resources match your filters.'
+                : 'No resources found.'
+            }
+            icon="library-outline"
+          />
+        }
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
         }

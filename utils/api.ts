@@ -1,3 +1,4 @@
+import { authService } from '@/services/auth';
 import { useMainStore } from '@/store/main';
 import { getStoredLocationId } from '@/store/main';
 import type { ApiRequestOptions, RefreshTokenResponse } from '@/types/auth';
@@ -11,6 +12,22 @@ export const getBaseUrl = (requireApiVersion = true): string => {
     (process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined) ||
     'https://amistee.ternary.com.bd/';
   return base.endsWith('/') ? base : `${base}/`;
+};
+
+/** WebSocket base for real-time notifications: wss://amistee.ternary.com.bd/ws/notifications/ */
+export const getWebSocketNotificationsBaseUrl = (): string => {
+  const envBase =
+    (process.env.EXPO_PUBLIC_WS_NOTIFICATIONS_BASE_URL as string | undefined);
+  if (envBase) {
+    const base = envBase.replace(/\/+$/, '');
+    return base.startsWith('ws://') || base.startsWith('wss://')
+      ? base
+      : base.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
+  }
+  const httpBase = getBaseUrl(false).replace(/\/+$/, '');
+  return httpBase
+    .replace(/^http:/i, 'ws:')
+    .replace(/^https:/i, 'wss:');
 };
 
 /** Placeholder image when no URL is provided (avatar, vehicle, etc.). */
@@ -129,12 +146,34 @@ export async function apiRequest<Req, Res>(
   }
 }
 
-type LoginResponse = {
+export type LoginResponse = {
   access_token: string;
   refresh_token: string;
   token_type: 'bearer';
   user: User;
 };
+
+async function applyAuthResponse(data: LoginResponse): Promise<void> {
+  if (data.user.role !== 'EMPLOYEE') {
+    throw new Error(
+      'Only Employee can login. You are logged in as ' +
+        UserRoleMap[data.user.role] +
+        '.'
+    );
+  }
+  await tokenStorage.setAccessToken(data.access_token);
+  await tokenStorage.setRefreshToken(data.refresh_token);
+  await tokenStorage.setRole(data.user.role);
+
+  const storedLocationId = await getStoredLocationId();
+  const initialLocationId =
+    storedLocationId && data.user.location_ids?.includes(storedLocationId)
+      ? storedLocationId
+      : data.user.location_ids?.[0] || data.user.location_id;
+  useMainStore.getState().setCurrentLocationId(initialLocationId ?? null);
+  useMainStore.getState().setMe(data.user);
+  useMainStore.getState().setRole(data.user.role);
+}
 
 export async function login(
   emailOrPhone: string,
@@ -149,28 +188,16 @@ export async function login(
     `${BASE_URL}auth/login`,
     loginBody
   );
+  await applyAuthResponse(data);
+  return data;
+}
 
-  if (data.user.role !== 'EMPLOYEE') {
-    throw new Error(
-      'Only Employee can login. You are logged in as ' +
-        UserRoleMap[data.user.role] +
-        '.'
-    );
-  }
-
-  await tokenStorage.setAccessToken(data.access_token);
-  await tokenStorage.setRefreshToken(data.refresh_token);
-  await tokenStorage.setRole(data.user.role);
-
-  const storedLocationId = await getStoredLocationId();
-  const initialLocationId =
-    storedLocationId && data.user.location_ids.includes(storedLocationId)
-      ? storedLocationId
-      : data.user.location_ids[0] || data.user.location_id;
-  useMainStore.getState().setCurrentLocationId(initialLocationId);
-  useMainStore.getState().setMe(data.user);
-  useMainStore.getState().setRole(data.user.role);
-
+export async function loginWithOTP(
+  phoneNumber: string,
+  code: string
+): Promise<LoginResponse> {
+  const data = await authService.verifyEmployeeLoginOTP(phoneNumber, code);
+  await applyAuthResponse(data);
   return data;
 }
 
@@ -192,20 +219,12 @@ export async function logout(): Promise<void> {
 }
 
 export async function fetchMe(): Promise<User> {
-  const BASE_URL = getBaseUrl(true);
-  const token = await tokenStorage.getAccessToken();
-  const currentLocationId = useMainStore.getState().currentLocationId;
-  const me = useMainStore.getState().me;
-  const locationId = currentLocationId || me?.location_id;
-
-  const headers: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
-  if (locationId) {
-    headers['X-Location-Id'] = locationId;
-  }
-
-  const { data } = await axios.get<User>(`${BASE_URL}auth/me`, { headers });
+  const data = await apiRequest<unknown, User>(
+    'auth/me',
+    { method: 'GET' },
+    true,
+    true
+  );
 
   if (data.location_ids) {
     useMainStore.getState().setLocationIds(data.location_ids);

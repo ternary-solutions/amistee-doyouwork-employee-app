@@ -8,16 +8,18 @@ import {
     muted,
     mutedForeground,
     primary,
+    primaryForeground,
     radius,
     spacing,
     success,
     typography,
 } from '@/constants/theme';
 import { spiffsService } from '@/services/spiffs';
-import type { Spiff } from '@/types/spiffs';
+import type { Spiff, SpiffComment } from '@/types/spiffs';
 import { getMediaUrl } from '@/utils/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Ionicons } from '@expo/vector-icons';
+import { format } from 'date-fns';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -28,6 +30,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -43,8 +46,25 @@ export default function SpiffDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const [spiff, setSpiff] = useState<Spiff | null>(null);
+  const [comments, setComments] = useState<SpiffComment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [docViewer, setDocViewer] = useState<{ url: string; title: string } | null>(null);
+
+  const loadComments = useCallback(async () => {
+    if (!id) return;
+    try {
+      setCommentsLoading(true);
+      const list = await spiffsService.getComments(id);
+      setComments(list ?? []);
+    } catch (error) {
+      console.error('Failed to load comments', error);
+    } finally {
+      setCommentsLoading(false);
+    }
+  }, [id]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -63,6 +83,25 @@ export default function SpiffDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (id && spiff) loadComments();
+  }, [id, spiff, loadComments]);
+
+  const handleAddComment = useCallback(async () => {
+    const text = newComment.trim();
+    if (!id || !text || submitting) return;
+    try {
+      setSubmitting(true);
+      await spiffsService.addComment(id, { comment: text });
+      setNewComment('');
+      loadComments();
+    } catch (error) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to add comment. Please try again.'));
+    } finally {
+      setSubmitting(false);
+    }
+  }, [id, newComment, submitting, loadComments]);
 
   const openAttachment = useCallback((url: string | null | undefined, title: string) => {
     if (!url?.trim()) return;
@@ -145,6 +184,52 @@ export default function SpiffDetailScreen() {
         </Text>
       </View>
 
+      <Text style={styles.sectionTitle}>Comments</Text>
+      {commentsLoading && comments.length === 0 ? (
+        <ActivityIndicator size="small" color={mutedForeground} style={styles.commentsLoader} />
+      ) : comments.length === 0 ? (
+        <Text style={styles.mutedText}>No comments yet.</Text>
+      ) : (
+        <View style={styles.commentsList}>
+          {comments.map((c) => (
+            <View key={c.id} style={styles.commentRow}>
+              <View style={styles.commentHeader}>
+                <Text style={styles.commentAuthor}>
+                  {[c.user?.first_name, c.user?.last_name].filter(Boolean).join(' ') || 'User'}
+                </Text>
+                <Text style={styles.commentDate}>
+                  {format(new Date(c.created_at), 'MMM d, yyyy · h:mm a')}
+                </Text>
+              </View>
+              <Text style={styles.commentText}>{c.comment}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+      <View style={styles.addCommentBlock}>
+        <TextInput
+          style={styles.commentInput}
+          value={newComment}
+          onChangeText={setNewComment}
+          placeholder="Add a comment..."
+          placeholderTextColor={mutedForeground}
+          multiline
+          maxLength={2000}
+        />
+        <Pressable
+          style={[
+            styles.submitCommentBtn,
+            (!newComment.trim() || submitting) && styles.submitCommentBtnDisabled,
+          ]}
+          onPress={handleAddComment}
+          disabled={!newComment.trim() || submitting}
+        >
+          <Text style={styles.submitCommentBtnText}>
+            {submitting ? 'Sending...' : 'Send'}
+          </Text>
+        </Pressable>
+      </View>
+
       <DocumentViewerModal
         visible={!!docViewer}
         onClose={() => setDocViewer(null)}
@@ -203,5 +288,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   meta: { fontSize: 13, color: mutedForeground, marginTop: spacing.base },
+  sectionTitle: { ...typography.title, color: foreground, marginTop: spacing.lg, marginBottom: spacing.sm },
+  commentsLoader: { marginVertical: spacing.sm },
+  mutedText: { fontSize: 14, color: mutedForeground, marginBottom: spacing.sm },
+  commentsList: { marginBottom: spacing.base },
+  commentRow: {
+    backgroundColor: muted,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  commentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  commentAuthor: { fontSize: 14, fontWeight: '600', color: foreground },
+  commentDate: { fontSize: 12, color: mutedForeground },
+  commentText: { fontSize: 14, color: foreground },
+  addCommentBlock: { marginTop: spacing.sm },
+  commentInput: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.base,
+    padding: spacing.md,
+    fontSize: 16,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: spacing.sm,
+  },
+  submitCommentBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
+    backgroundColor: primary,
+  },
+  submitCommentBtnDisabled: { opacity: 0.6 },
+  submitCommentBtnText: { fontSize: 14, fontWeight: '600', color: primaryForeground },
   errorText: { fontSize: 16, color: destructive },
 });

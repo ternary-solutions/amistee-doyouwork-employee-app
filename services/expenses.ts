@@ -1,4 +1,4 @@
-import type { Expense, ExpenseCreate, ExpenseList } from '@/types/expenses';
+import type { Expense, ExpenseComment, ExpenseCommentCreate, ExpenseCreate, ExpenseList } from '@/types/expenses';
 import type { Type } from '@/types/types';
 import { apiRequest } from '@/utils/api';
 
@@ -35,5 +35,23 @@ export const expensesService = {
 
   async listTypes(): Promise<Type[]> {
     return apiRequest<unknown, Type[]>('types/expense', { method: 'GET' }, true, true);
+  },
+
+  async getComments(expenseId: string): Promise<ExpenseComment[]> {
+    return apiRequest<unknown, ExpenseComment[]>(
+      `expenses/${expenseId}/comments`,
+      { method: 'GET' },
+      true,
+      true
+    );
+  },
+
+  async addComment(expenseId: string, data: ExpenseCommentCreate): Promise<ExpenseComment> {
+    return apiRequest<ExpenseCommentCreate, ExpenseComment>(
+      `expenses/${expenseId}/comments`,
+      { method: 'POST', data },
+      true,
+      true
+    );
   },
 };

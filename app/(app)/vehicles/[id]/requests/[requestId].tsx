@@ -12,12 +12,14 @@ import {
     typography,
 } from '@/constants/theme';
 import { repairRequestsService } from '@/services/requests/repairs';
+import { getErrorMessage } from '@/utils/errorMessage';
 import type { RepairRequest, RepairRequestComment } from '@/types/requests/repairs';
 import { format } from 'date-fns';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -100,7 +102,7 @@ export default function VehicleRequestDetailScreen() {
       setNewComment('');
       loadComments();
     } catch (error) {
-      console.error('Failed to add comment', error);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to add comment. Please try again.'));
     } finally {
       setSubmitting(false);
     }

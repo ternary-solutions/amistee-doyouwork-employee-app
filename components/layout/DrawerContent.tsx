@@ -2,6 +2,7 @@ import { clientInfo, menuGroups } from '@/constants/navigation';
 import { primary, primaryDark, primaryForeground } from '@/constants/theme';
 import { hapticImpact } from '@/utils/haptics';
 import { useMainStore } from '@/store/main';
+import { LocationSwitcher } from '@/components/layout/LocationSwitcher';
 import { getMediaUrl, logout } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
@@ -90,6 +91,8 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
             </View>
           </View>
         </View>
+
+        <LocationSwitcher />
 
         {/* Menu groups */}
         {menuGroups.map((group, groupIndex) => (

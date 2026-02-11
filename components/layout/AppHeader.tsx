@@ -54,8 +54,7 @@ export function AppHeader({
   const me = useMainStore((state) => state.me);
 
   const canGoBack = navigation.canGoBack();
-  // Always use hamburger menu - never show back button (per product preference)
-  const showBack = showBackProp ?? false;
+  const showBack = showBackProp ?? canGoBack;
 
   const openDrawer = () => {
     const drawer = 'getParent' in navigation ? (navigation as { getParent: () => { openDrawer?: () => void } | undefined }).getParent() : null;

@@ -23,6 +23,10 @@ export const suggestionsService = {
     );
   },
 
+  async getById(id: string): Promise<Suggestion> {
+    return apiRequest<unknown, Suggestion>(`suggestions/${id}`, { method: 'GET' }, true, true);
+  },
+
   async create(data: SuggestionCreate): Promise<Suggestion> {
     return apiRequest<SuggestionCreate, Suggestion>(
       'suggestions/',

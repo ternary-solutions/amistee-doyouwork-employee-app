@@ -32,7 +32,7 @@ export default function AppLayout() {
       <Drawer.Screen name="resources" options={{ drawerLabel: 'Resources', title: 'Resources' }} />
       <Drawer.Screen name="suggestions" options={{ drawerLabel: 'Suggestions', title: 'Suggestions' }} />
       <Drawer.Screen name="contacts" options={{ drawerLabel: 'Contacts', title: 'Contacts' }} />
-      <Drawer.Screen name="referrals" options={{ drawerLabel: 'Referrals', title: 'Referrals' }} />
+      <Drawer.Screen name="referrals" options={{ drawerLabel: 'Partner Companies', title: 'Partner Companies' }} />
       <Drawer.Screen name="settings" options={{ drawerLabel: 'Settings', title: 'Settings' }} />
     </Drawer>
   );

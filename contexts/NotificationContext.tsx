@@ -1,8 +1,9 @@
 import { notificationsService } from '@/services/notifications';
 import { useMainStore } from '@/store/main';
 import type { UserNotification } from '@/types/userNotifications';
-import { getBaseUrl } from '@/utils/api';
+import { getWebSocketNotificationsBaseUrl } from '@/utils/api';
 import { tokenStorage } from '@/utils/tokenStorage';
+import { toast } from '@/utils/toast';
 import {
     createContext,
     useCallback,
@@ -27,13 +28,11 @@ const NotificationContext = createContext<NotificationContextType | undefined>(
 );
 
 function getWebSocketUrl(userId: string, token: string): string {
-  let baseUrl = getBaseUrl(false);
-  baseUrl = baseUrl.replace(/\/+$/, '');
-  const wsBaseUrl = baseUrl
-    .replace(/^http:/i, 'ws:')
-    .replace(/^https:/i, 'wss:');
-  const wsPath = `/ws/notifications/${userId}`;
-  return `${wsBaseUrl}${wsPath}?token=${encodeURIComponent(token)}`;
+  const wsBase = getWebSocketNotificationsBaseUrl();
+  const path = wsBase.includes('/ws/notifications')
+    ? `${wsBase.replace(/\/+$/, '')}/${userId}`
+    : `${wsBase.replace(/\/+$/, '')}/ws/notifications/${userId}`;
+  return `${path}?token=${encodeURIComponent(token)}`;
 }
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
@@ -44,6 +43,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const PING_INTERVAL_MS = 30_000; // 30 seconds - backend responds to "ping" with "pong"
   const me = useMainStore((state) => state.me);
   const fetchedUserIdRef = useRef<string | null>(null);
 
@@ -182,6 +184,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               clearTimeout(reconnectTimeoutRef.current);
               reconnectTimeoutRef.current = null;
             }
+            // Heartbeat: backend responds to "ping" with "pong"
+            pingIntervalRef.current = setInterval(() => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send('ping');
+              }
+            }, PING_INTERVAL_MS);
           };
 
           ws.onmessage = (event) => {
@@ -196,6 +204,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                   read: message.data.read !== undefined ? message.data.read : false,
                 };
 
+                let isNewNotification = false;
                 setNotifications((prev) => {
                   const newId = newNotification.id || newNotification.notification_id;
                   const exists = prev.some((n) => {
@@ -208,6 +217,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                       return nId === newId ? newNotification : n;
                     });
                   }
+                  isNewNotification = true;
                   return [newNotification, ...prev];
                 });
 
@@ -216,8 +226,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                 } else if (!newNotification.read) {
                   setUnreadCount((prev) => prev + 1);
                 }
-                // State updates above; UI (badge, list) will reflect. Add a toast library
-                // if you want an in-app banner for new notifications.
+                if (isNewNotification) {
+                  const toastMessage =
+                    (typeof newNotification.message === 'string' && newNotification.message.trim())
+                      ? newNotification.message.trim().slice(0, 80)
+                      : 'New notification';
+                  toast.message(toastMessage);
+                }
               }
             } catch (error) {
               console.error('[NotificationContext] WebSocket message parse error:', error);
@@ -230,6 +245,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
           ws.onclose = (event) => {
             clearTimeout(connectionTimeout);
+            if (pingIntervalRef.current) {
+              clearInterval(pingIntervalRef.current);
+              pingIntervalRef.current = null;
+            }
             if (event.code !== 1000 && !cancelled) {
               reconnectTimeoutRef.current = setTimeout(() => {
                 connectWebSocket();
@@ -251,6 +270,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
+      }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
       }
       if (wsRef.current) {
         wsRef.current.close(1000, 'Component unmounting');

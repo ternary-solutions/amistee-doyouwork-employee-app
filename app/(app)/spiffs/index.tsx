@@ -4,6 +4,7 @@ import { ListCard } from '@/components/ui/ListCard';
 import {
     background,
     border,
+    card,
     destructive,
     foreground,
     muted,
@@ -15,6 +16,7 @@ import {
     success,
 } from '@/constants/theme';
 import { mediaService } from '@/services/media';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { spiffsService } from '@/services/spiffs';
 import type { Spiff } from '@/types/spiffs';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +51,7 @@ export default function SpiffsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [spiffs, setSpiffs] = useState<Spiff[]>([]);
+  const [summary, setSummary] = useState<{ total_earned: number; active_spiffs: number; approved_spiffs: number } | null>(null);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,12 +66,22 @@ export default function SpiffsScreen() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [listRes, typesRes] = await Promise.all([
+      const [listRes, typesRes, summaryRes] = await Promise.all([
         spiffsService.list(1, 50),
         spiffsService.listTypes(),
+        spiffsService.getSummary().catch(() => null),
       ]);
       setSpiffs(listRes?.items ?? []);
       setTypes(typesRes?.map((t) => ({ id: t.id, name: t.name })) ?? []);
+      if (summaryRes) {
+        setSummary({
+          total_earned: Number(summaryRes.total_earned ?? 0),
+          active_spiffs: summaryRes.active_spiffs ?? 0,
+          approved_spiffs: summaryRes.approved_spiffs ?? 0,
+        });
+      } else {
+        setSummary(null);
+      }
     } catch (error) {
       console.error('Failed to load spiffs', error);
     } finally {
@@ -163,14 +176,15 @@ export default function SpiffsScreen() {
       setAttachments([]);
       load();
     } catch (error) {
-      console.error('Create spiff failed', error);
-      Alert.alert('Error', 'Failed to create spiff. Please try again.');
+      Alert.alert('Error', getErrorMessage(error, 'Failed to submit spiff. Please try again.'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const totalPaid = spiffs.filter((s) => s.status === 'Paid' && s.amount).reduce((sum, s) => sum + Number(s.amount), 0);
+
+  const showSummaryCard = summary && (summary.total_earned > 0 || summary.active_spiffs > 0 || summary.approved_spiffs > 0);
 
   if (loading && spiffs.length === 0) {
     return (
@@ -182,7 +196,23 @@ export default function SpiffsScreen() {
 
   return (
     <>
-      {totalPaid > 0 && (
+      {showSummaryCard && (
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total earned (Approved)</Text>
+            <Text style={styles.summaryAmount}>${summary!.total_earned.toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryChips}>
+            <View style={styles.summaryChip}>
+              <Text style={styles.summaryChipText}>{summary!.active_spiffs} Pending</Text>
+            </View>
+            <View style={styles.summaryChip}>
+              <Text style={styles.summaryChipText}>{summary!.approved_spiffs} Approved</Text>
+            </View>
+          </View>
+        </View>
+      )}
+      {totalPaid > 0 && !showSummaryCard && (
         <View style={styles.totalCard}>
           <Text style={styles.totalLabel}>Total earned (Paid)</Text>
           <Text style={styles.totalAmount}>${totalPaid.toFixed(2)}</Text>
@@ -291,6 +321,27 @@ export default function SpiffsScreen() {
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fill: { flex: 1, backgroundColor: background },
+  summaryCard: {
+    marginHorizontal: spacing.base,
+    marginTop: spacing.base,
+    marginBottom: spacing.base,
+    padding: spacing.base,
+    backgroundColor: card,
+    borderRadius: radius.base,
+    borderWidth: 1,
+    borderColor: border,
+  },
+  summaryRow: { marginBottom: spacing.sm },
+  summaryLabel: { fontSize: 13, color: mutedForeground },
+  summaryAmount: { fontSize: 22, fontWeight: '700', color: success },
+  summaryChips: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  summaryChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    backgroundColor: muted,
+    borderRadius: radius.sm,
+  },
+  summaryChipText: { fontSize: 13, color: foreground },
   totalCard: { marginHorizontal: spacing.base, marginBottom: spacing.base, padding: spacing.base, backgroundColor: '#f0fdf4', borderRadius: radius.base },
   totalLabel: { fontSize: 13, color: mutedForeground },
   totalAmount: { fontSize: 22, fontWeight: '700', color: success },

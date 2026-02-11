@@ -1,7 +1,6 @@
 import {
   background,
   border,
-  card,
   foreground,
   muted,
   mutedForeground,
@@ -18,16 +17,18 @@ import type { Suggestion } from '@/types/suggestions';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
-  ScrollView,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -41,6 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SuggestionsScreen() {
   const navigation = useNavigation();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<Suggestion[]>([]);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
@@ -88,7 +90,7 @@ export default function SuggestionsScreen() {
       setDetails('');
       load();
     } catch (error) {
-      console.error('Create suggestion failed', error);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to submit suggestion. Please try again.'));
     } finally {
       setSubmitting(false);
     }
@@ -114,8 +116,14 @@ export default function SuggestionsScreen() {
           keyExtractor={(s) => s.id}
           style={{ backgroundColor: background }}
           contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
+          refreshControl={
+            <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+          }
           renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
+            <Pressable
+              style={styles.cardWrap}
+              onPress={() => router.push(`/(app)/suggestions/${item.id}`)}
+            >
               <ListCard
                 title={item.title}
                 meta={[`${item.suggestion_type?.name ?? ''} · ${new Date(item.created_at).toLocaleDateString()}`]}
@@ -123,7 +131,7 @@ export default function SuggestionsScreen() {
               >
                 {item.details ? <Text style={styles.details} numberOfLines={2}>{item.details}</Text> : null}
               </ListCard>
-            </View>
+            </Pressable>
           )}
         />
       )}

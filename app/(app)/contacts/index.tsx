@@ -115,7 +115,7 @@ export default function ContactsListScreen() {
         autoCapitalize="none"
         autoCorrect={false}
       />
-      {types.length > 0 && (
+      {types.length > 0 && users.length > 0 ? (
         <View style={styles.typeFilterRow}>
           <Pressable
             style={[styles.typeChip, !typeFilter && styles.typeChipActive]}
@@ -137,7 +137,7 @@ export default function ContactsListScreen() {
             </Pressable>
           ))}
         </View>
-      )}
+      ) : null}
     </View>
   );
 

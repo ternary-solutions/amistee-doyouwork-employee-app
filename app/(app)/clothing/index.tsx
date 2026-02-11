@@ -16,10 +16,12 @@ import {
     success,
 } from '@/constants/theme';
 import { clothingRequestsService } from '@/services/requests/clothings';
+import { getErrorMessage } from '@/utils/errorMessage';
 import type { ClothingRequest } from '@/types/requests/clothings';
 import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
+    Alert,
     FlatList,
     Pressable,
     RefreshControl,
@@ -96,7 +98,7 @@ export default function ClothingScreen() {
       setReason('');
       load();
     } catch (error) {
-      console.error('Create clothing request failed', error);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to submit clothing request. Please try again.'));
     } finally {
       setSubmitting(false);
     }

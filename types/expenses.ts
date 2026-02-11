@@ -36,3 +36,16 @@ export interface ExpenseCreate {
   details: string;
   attachment_url?: string;
 }
+
+export interface ExpenseComment {
+  id: string;
+  expense_id: string;
+  user: { id: string; first_name: string; last_name: string | null; email: string };
+  comment: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExpenseCommentCreate {
+  comment: string;
+}

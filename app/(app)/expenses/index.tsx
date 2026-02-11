@@ -223,48 +223,49 @@ export default function ExpensesScreen() {
         }
       >
         {expenses.length > 0 && (
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Total Pending</Text>
-              <Text style={styles.summaryValue}>
-                ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </Text>
+          <>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Total Pending</Text>
+                <Text style={styles.summaryValue}>
+                  ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryLabel}>Total Paid</Text>
+                <Text style={styles.summaryValue}>
+                  ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Total Paid</Text>
-              <Text style={styles.summaryValue}>
-                ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </Text>
-            </View>
-          </View>
-        )}
-
-        <SegmentedControl
-          options={[{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed' }]}
-          value={filter}
-          onChange={(v) => setFilter(v as Filter)}
-        />
-        {types.length > 0 && (
-          <View style={styles.typeFilterWrap}>
-            <Text style={styles.typeFilterLabel}>Filter by type</Text>
-            <View style={styles.typeFilterRow}>
-              <Pressable
-                style={[styles.typeFilterBtn, !expenseTypeFilter && styles.typeFilterBtnActive]}
-                onPress={() => setExpenseTypeFilter('')}
-              >
-                <Text style={[styles.typeFilterBtnText, !expenseTypeFilter && styles.typeFilterBtnTextActive]}>All</Text>
-              </Pressable>
-              {types.map((t) => (
-                <Pressable
-                  key={t.id}
-                  style={[styles.typeFilterBtn, expenseTypeFilter === t.id && styles.typeFilterBtnActive]}
-                  onPress={() => setExpenseTypeFilter(t.id)}
-                >
-                  <Text style={[styles.typeFilterBtnText, expenseTypeFilter === t.id && styles.typeFilterBtnTextActive]}>{t.name}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
+            <SegmentedControl
+              options={[{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed' }]}
+              value={filter}
+              onChange={(v) => setFilter(v as Filter)}
+            />
+            {types.length > 0 && (
+              <View style={styles.typeFilterWrap}>
+                <Text style={styles.typeFilterLabel}>Filter by type</Text>
+                <View style={styles.typeFilterRow}>
+                  <Pressable
+                    style={[styles.typeFilterBtn, !expenseTypeFilter && styles.typeFilterBtnActive]}
+                    onPress={() => setExpenseTypeFilter('')}
+                  >
+                    <Text style={[styles.typeFilterBtnText, !expenseTypeFilter && styles.typeFilterBtnTextActive]}>All</Text>
+                  </Pressable>
+                  {types.map((t) => (
+                    <Pressable
+                      key={t.id}
+                      style={[styles.typeFilterBtn, expenseTypeFilter === t.id && styles.typeFilterBtnActive]}
+                      onPress={() => setExpenseTypeFilter(t.id)}
+                    >
+                      <Text style={[styles.typeFilterBtnText, expenseTypeFilter === t.id && styles.typeFilterBtnTextActive]}>{t.name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+          </>
         )}
 
         {expenses.length === 0 ? (

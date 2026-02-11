@@ -84,6 +84,7 @@ export default function VehiclesListScreen() {
         autoCapitalize="none"
         autoCorrect={false}
       />
+      {vehicles.length > 0 && vehicleTypeOptions.length > 1 ? (
       <View style={styles.typeFilterRow}>
         <Text style={styles.filterLabel}>Type:</Text>
         <View style={styles.typeFilterOptions}>
@@ -108,6 +109,7 @@ export default function VehiclesListScreen() {
           ))}
         </View>
       </View>
+      ) : null}
     </View>
   );
 

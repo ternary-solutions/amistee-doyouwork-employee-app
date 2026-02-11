@@ -34,7 +34,7 @@ export const menuGroups: MenuGroup[] = [
     label: 'TEAM MEMBERS',
     items: [
       { name: 'contacts', label: 'Contacts', icon: 'people' },
-      { name: 'referrals', label: 'Referrals', icon: 'person-add' },
+      { name: 'referrals', label: 'Partner Companies', icon: 'business' },
     ],
   },
 ];

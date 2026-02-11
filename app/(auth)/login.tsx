@@ -1,53 +1,53 @@
 import {
-    border,
-    card,
-    destructive,
-    foreground,
-    mutedForeground,
-    primary,
-    primaryDark,
-    primaryForeground,
-    radius,
-    spacing,
-    typography,
-} from '@/constants/theme';
-import { authService } from '@/services/auth';
-import { fetchMe, login, loginWithOTP } from '@/utils/api';
-import { tokenStorage } from '@/utils/tokenStorage';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+  border,
+  card,
+  destructive,
+  foreground,
+  mutedForeground,
+  primary,
+  primaryDark,
+  primaryForeground,
+  radius,
+  spacing,
+  typography,
+} from "@/constants/theme";
+import { authService } from "@/services/auth";
+import { fetchMe, login, loginWithOTP } from "@/utils/api";
+import { tokenStorage } from "@/utils/tokenStorage";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 function normalizePhone(phone: string): string {
-  return phone.replace(/\s|-|\(|\)/g, '').trim();
+  return phone.replace(/\s|-|\(|\)/g, "").trim();
 }
 
 export default function LoginScreen() {
   const router = useRouter();
   const [usePhoneLogin, setUsePhoneLogin] = useState(false);
 
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
+  const [otpCode, setOtpCode] = useState("");
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   const startCooldown = useCallback(() => {
@@ -66,9 +66,9 @@ export default function LoginScreen() {
       if (token) {
         try {
           await fetchMe();
-          router.replace('/(app)/dashboard');
+          router.replace("/(app)/dashboard");
         } catch (err) {
-          console.error('[Login] Token validation failed:', err);
+          console.error("[Login] Token validation failed:", err);
           await tokenStorage.clearAll();
         }
       }
@@ -77,27 +77,26 @@ export default function LoginScreen() {
     checkAuth();
   }, [router]);
 
-  const canSubmitEmail =
-    identifier.length > 0 && password.length > 0;
+  const canSubmitEmail = identifier.length > 0 && password.length > 0;
 
-  const canRequestOtp =
-    !usePhoneLogin ? false : normalizePhone(phone).length >= 10 && cooldownRemaining === 0;
-  const canVerifyOtp =
-    usePhoneLogin && otpSent && otpCode.length === 6;
+  const canRequestOtp = !usePhoneLogin
+    ? false
+    : normalizePhone(phone).length >= 10 && cooldownRemaining === 0;
+  const canVerifyOtp = usePhoneLogin && otpSent && otpCode.length === 6;
 
   const handleEmailSubmit = async () => {
     if (!canSubmitEmail || submitting) return;
     setSubmitting(true);
-    setError('');
+    setError("");
     try {
       await login(identifier, password);
-      router.replace('/(app)/dashboard');
+      router.replace("/(app)/dashboard");
     } catch (err: unknown) {
       const res = err as { data?: { detail?: string }; message?: string };
       const errorMessage =
         res?.data?.detail ||
         res?.message ||
-        'Login failed. Please check your credentials.';
+        "Login failed. Please check your credentials.";
       setError(errorMessage);
     } finally {
       setSubmitting(false);
@@ -108,24 +107,29 @@ export default function LoginScreen() {
     if (!canRequestOtp || submitting) return;
     const raw = normalizePhone(phone);
     if (raw.length < 10) {
-      setError('Please enter a valid phone number.');
+      setError("Please enter a valid phone number.");
       return;
     }
     setSubmitting(true);
-    setError('');
+    setError("");
     try {
-      await authService.requestEmployeeLoginOTP(raw.startsWith('+') ? raw : `+${raw}`);
+      await authService.requestEmployeeLoginOTP(
+        raw.startsWith("+") ? raw : `+${raw}`,
+      );
       setOtpSent(true);
-      setOtpCode('');
+      setOtpCode("");
       startCooldown();
     } catch (err: unknown) {
-      const res = err as { response?: { data?: { detail?: string } }; message?: string };
+      const res = err as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
       const errorMessage =
         (Array.isArray(res?.response?.data?.detail)
           ? (res.response?.data?.detail as string[])?.[0]
           : res?.response?.data?.detail) ||
         res?.message ||
-        'Failed to send code. Please try again.';
+        "Failed to send code. Please try again.";
       setError(errorMessage);
     } finally {
       setSubmitting(false);
@@ -136,18 +140,21 @@ export default function LoginScreen() {
     if (!canVerifyOtp || submitting) return;
     const raw = normalizePhone(phone);
     setSubmitting(true);
-    setError('');
+    setError("");
     try {
-      await loginWithOTP(raw.startsWith('+') ? raw : `+${raw}`, otpCode);
-      router.replace('/(app)/dashboard');
+      await loginWithOTP(raw.startsWith("+") ? raw : `+${raw}`, otpCode);
+      router.replace("/(app)/dashboard");
     } catch (err: unknown) {
-      const res = err as { response?: { data?: { detail?: string } }; message?: string };
+      const res = err as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
       const errorMessage =
         (Array.isArray(res?.response?.data?.detail)
           ? (res.response?.data?.detail as string[])?.[0]
           : res?.response?.data?.detail) ||
         res?.message ||
-        'Invalid code. Please try again.';
+        "Invalid code. Please try again.";
       setError(errorMessage);
     } finally {
       setSubmitting(false);
@@ -156,27 +163,24 @@ export default function LoginScreen() {
 
   const switchToPhone = () => {
     setUsePhoneLogin(true);
-    setError('');
-    setIdentifier('');
-    setPassword('');
+    setError("");
+    setIdentifier("");
+    setPassword("");
     setOtpSent(false);
-    setOtpCode('');
+    setOtpCode("");
   };
 
   const switchToEmail = () => {
     setUsePhoneLogin(false);
-    setError('');
-    setPhone('');
+    setError("");
+    setPhone("");
     setOtpSent(false);
-    setOtpCode('');
+    setOtpCode("");
   };
 
   if (checkingAuth) {
     return (
-      <LinearGradient
-        colors={[primaryDark, primary]}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={[primaryDark, primary]} style={styles.gradient}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={primaryForeground} />
         </View>
@@ -186,10 +190,10 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient colors={[primaryDark, primary]} style={styles.gradient}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -197,7 +201,7 @@ export default function LoginScreen() {
           >
             <View style={styles.logoWrap}>
               <Image
-                source={require('../../assets/images/doyouwork-logo.png')}
+                source={require("../../assets/images/doyouwork-logo.png")}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
@@ -234,8 +238,11 @@ export default function LoginScreen() {
                   {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
                   <Pressable
-                    onPress={() => router.push('/(auth)/forgot-password')}
-                    style={({ pressed }) => [styles.forgotLink, pressed && { opacity: 0.8 }]}
+                    onPress={() => router.push("/(auth)/forgot-password")}
+                    style={({ pressed }) => [
+                      styles.forgotLink,
+                      pressed && { opacity: 0.8 },
+                    ]}
                     accessibilityLabel="Forgot password?"
                     accessibilityRole="link"
                   >
@@ -246,7 +253,9 @@ export default function LoginScreen() {
                     style={({ pressed }) => [
                       styles.button,
                       (!canSubmitEmail || submitting) && styles.buttonDisabled,
-                      canSubmitEmail && !submitting && pressed && { opacity: 0.8 },
+                      canSubmitEmail &&
+                        !submitting &&
+                        pressed && { opacity: 0.8 },
                     ]}
                     onPress={handleEmailSubmit}
                     disabled={!canSubmitEmail || submitting}
@@ -276,12 +285,17 @@ export default function LoginScreen() {
 
                   {!otpSent ? (
                     <>
-                      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                      {error ? (
+                        <Text style={styles.errorText}>{error}</Text>
+                      ) : null}
                       <Pressable
                         style={({ pressed }) => [
                           styles.button,
-                          (!canRequestOtp || submitting) && styles.buttonDisabled,
-                          canRequestOtp && !submitting && pressed && { opacity: 0.8 },
+                          (!canRequestOtp || submitting) &&
+                            styles.buttonDisabled,
+                          canRequestOtp &&
+                            !submitting &&
+                            pressed && { opacity: 0.8 },
                         ]}
                         onPress={handleRequestOtp}
                         disabled={!canRequestOtp || submitting}
@@ -291,7 +305,9 @@ export default function LoginScreen() {
                         {submitting ? (
                           <ActivityIndicator color={primaryForeground} />
                         ) : cooldownRemaining > 0 ? (
-                          <Text style={styles.buttonText}>Resend in {cooldownRemaining}s</Text>
+                          <Text style={styles.buttonText}>
+                            Resend in {cooldownRemaining}s
+                          </Text>
                         ) : (
                           <Text style={styles.buttonText}>Send Code</Text>
                         )}
@@ -303,19 +319,26 @@ export default function LoginScreen() {
                       <TextInput
                         style={styles.input}
                         value={otpCode}
-                        onChangeText={(t) => setOtpCode(t.replace(/\D/g, '').slice(0, 6))}
+                        onChangeText={(t) =>
+                          setOtpCode(t.replace(/\D/g, "").slice(0, 6))
+                        }
                         placeholder="Enter 6-digit code"
                         placeholderTextColor={mutedForeground}
                         keyboardType="number-pad"
                         maxLength={6}
                         autoFocus
                       />
-                      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                      {error ? (
+                        <Text style={styles.errorText}>{error}</Text>
+                      ) : null}
                       <Pressable
                         style={({ pressed }) => [
                           styles.button,
-                          (!canVerifyOtp || submitting) && styles.buttonDisabled,
-                          canVerifyOtp && !submitting && pressed && { opacity: 0.8 },
+                          (!canVerifyOtp || submitting) &&
+                            styles.buttonDisabled,
+                          canVerifyOtp &&
+                            !submitting &&
+                            pressed && { opacity: 0.8 },
                         ]}
                         onPress={handleVerifyOtp}
                         disabled={!canVerifyOtp || submitting}
@@ -325,7 +348,9 @@ export default function LoginScreen() {
                         {submitting ? (
                           <ActivityIndicator color={primaryForeground} />
                         ) : (
-                          <Text style={styles.buttonText}>Verify & Sign In</Text>
+                          <Text style={styles.buttonText}>
+                            Verify & Sign In
+                          </Text>
                         )}
                       </Pressable>
                       <Pressable
@@ -334,13 +359,15 @@ export default function LoginScreen() {
                         style={({ pressed }) => [
                           styles.resendLink,
                           pressed && { opacity: 0.8 },
-                          (cooldownRemaining > 0 || submitting) && { opacity: 0.5 },
+                          (cooldownRemaining > 0 || submitting) && {
+                            opacity: 0.5,
+                          },
                         ]}
                       >
                         <Text style={styles.forgotLinkText}>
                           {cooldownRemaining > 0
                             ? `Resend code in ${cooldownRemaining}s`
-                            : 'Resend code'}
+                            : "Resend code"}
                         </Text>
                       </Pressable>
                     </>
@@ -350,10 +377,13 @@ export default function LoginScreen() {
 
               <Pressable
                 onPress={usePhoneLogin ? switchToEmail : switchToPhone}
-                style={({ pressed }) => [styles.switchLink, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [
+                  styles.switchLink,
+                  pressed && { opacity: 0.8 },
+                ]}
               >
                 <Text style={styles.forgotLinkText}>
-                  {usePhoneLogin ? 'Login with email' : 'Login with phone'}
+                  {usePhoneLogin ? "Login with email" : "Login with phone"}
                 </Text>
               </Pressable>
             </View>
@@ -376,17 +406,17 @@ const styles = StyleSheet.create({
   },
   centered: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: spacing.base,
     paddingVertical: 48,
   },
   logoWrap: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.lg,
   },
   logoImage: {
@@ -398,31 +428,31 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     maxWidth: 400,
-    width: '100%',
-    alignSelf: 'center',
+    width: "100%",
+    alignSelf: "center",
   },
   brandTitle: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     color: primary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: spacing.lg,
   },
   title: {
     ...typography.title,
     color: foreground,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
     color: mutedForeground,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 4,
     marginBottom: spacing.lg,
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: foreground,
     marginBottom: 6,
   },
@@ -442,16 +472,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   forgotLink: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginBottom: spacing.base,
   },
   resendLink: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: spacing.sm,
     marginBottom: spacing.base,
   },
   switchLink: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: spacing.base,
   },
   forgotLinkText: {
@@ -462,8 +492,8 @@ const styles = StyleSheet.create({
     backgroundColor: primary,
     borderRadius: radius.base,
     paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: 48,
   },
   buttonDisabled: {
@@ -472,6 +502,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: primaryForeground,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

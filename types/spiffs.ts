@@ -1,4 +1,4 @@
-import type { UserInfo } from '@/types/users';
+import type { UserInfo } from "@/types/users";
 
 export interface SpiffTypeInfoOutput {
   id: string;
@@ -7,7 +7,7 @@ export interface SpiffTypeInfoOutput {
   predetermined_amount: string | null;
 }
 
-export type SpiffStatus = 'Pending' | 'Approved' | 'Denied' | 'Paid';
+export type SpiffStatus = "Pending" | "Approved" | "Denied";
 
 export interface Spiff {
   id: string;
@@ -49,7 +49,12 @@ export interface SpiffSummary {
 export interface SpiffComment {
   id: string;
   spiff_id: string;
-  user: { id: string; first_name: string; last_name: string | null; email: string };
+  user: {
+    id: string;
+    first_name: string;
+    last_name: string | null;
+    email: string;
+  };
   comment: string;
   created_at: string;
   updated_at: string;

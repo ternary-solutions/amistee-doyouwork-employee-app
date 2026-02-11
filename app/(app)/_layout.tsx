@@ -1,8 +1,9 @@
-import { AppHeader } from '@/components/layout/AppHeader';
-import { CustomDrawerContent } from '@/components/layout/DrawerContent';
-import { useHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import type { DrawerNavigationOptions } from '@react-navigation/drawer';
-import { Drawer } from 'expo-router/drawer';
+import { AppHeader } from "@/components/layout/AppHeader";
+import { CustomDrawerContent } from "@/components/layout/DrawerContent";
+import { DrawerModalProvider } from "@/contexts/DrawerModalContext";
+import { useHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import type { DrawerNavigationOptions } from "@react-navigation/drawer";
+import { Drawer } from "expo-router/drawer";
 
 /** Custom options passed to AppHeader (not in DrawerNavigationOptions by default) */
 type AppScreenOptions = DrawerNavigationOptions & {
@@ -13,7 +14,10 @@ type AppScreenOptions = DrawerNavigationOptions & {
   showBack?: boolean;
 };
 
-function AppHeaderWithContext(props: { options?: AppScreenOptions; [key: string]: unknown }) {
+function AppHeaderWithContext(props: {
+  options?: AppScreenOptions;
+  [key: string]: unknown;
+}) {
   const contextOpts = useHeaderOptions();
   const opts = props.options as AppScreenOptions | undefined;
   return (
@@ -30,32 +34,71 @@ function AppHeaderWithContext(props: { options?: AppScreenOptions; [key: string]
 
 export default function AppLayout() {
   return (
-    <Drawer
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
-        drawerStyle: { width: '85%', maxWidth: 360 },
-        headerShown: true,
-        header: (props) => {
-          return <AppHeaderWithContext {...props} />;
-        },
-        headerShadowVisible: false,
-        headerStyle: { backgroundColor: 'transparent' },
-      }}
-    >
-      <Drawer.Screen name="dashboard" options={{ drawerLabel: 'My Dashboard', title: 'Dashboard', headerShown: false }} />
-      <Drawer.Screen name="schedule" options={{ drawerLabel: 'My Schedule', title: 'My Schedule', showBack: false } as AppScreenOptions} />
-      <Drawer.Screen name="notifications" options={{ drawerLabel: 'Notifications', title: 'Notifications' }} />
-      <Drawer.Screen name="tools" options={{ drawerLabel: 'Tool Requests', title: 'Tools', showBack: false } as AppScreenOptions} />
-      <Drawer.Screen name="spiffs" options={{ drawerLabel: 'Spiffs', title: 'Spiffs' }} />
-      <Drawer.Screen name="expenses" options={{ drawerLabel: 'Expenses', title: 'Expenses' }} />
-      <Drawer.Screen name="vehicles" options={{ drawerLabel: 'Vehicles & Maintenance', title: 'Vehicles' }} />
-      <Drawer.Screen name="clothing" options={{ drawerLabel: 'Clothing Requests', title: 'Clothing' }} />
-      <Drawer.Screen name="time-off" options={{ drawerLabel: 'Time Off Requests', title: 'Time Off', showBack: false } as AppScreenOptions} />
-      <Drawer.Screen name="resources" options={{ drawerLabel: 'Resources', title: 'Resources', showBack: false } as AppScreenOptions} />
-      <Drawer.Screen name="suggestions" options={{ drawerLabel: 'Suggestions', title: 'Suggestions' }} />
-      <Drawer.Screen name="contacts" options={{ drawerLabel: 'Contacts', title: 'Contacts' }} />
-      <Drawer.Screen name="referrals" options={{ drawerLabel: 'Partner Companies', title: 'Partner Companies' }} />
-      <Drawer.Screen name="settings" options={{ drawerLabel: 'Settings', title: 'Settings', showBack: false } as AppScreenOptions} />
-    </Drawer>
+    <DrawerModalProvider>
+      <Drawer
+        drawerContent={(props) => <CustomDrawerContent {...props} />}
+        screenOptions={({ route }) => {
+          const base = {
+            drawerStyle: { width: "85%", maxWidth: 360 },
+            headerShown: true,
+            header: (p: unknown) => <AppHeaderWithContext {...(p as object)} />,
+            headerShadowVisible: false,
+            headerStyle: { backgroundColor: "transparent" },
+          };
+          const routeOptions: Record<string, Partial<AppScreenOptions>> = {
+            dashboard: {
+              drawerLabel: "My Dashboard",
+              title: "Dashboard",
+              headerShown: false,
+            },
+            schedule: {
+              drawerLabel: "My Schedule",
+              title: "My Schedule",
+              showBack: false,
+            },
+            notifications: {
+              drawerLabel: "Notifications",
+              title: "Notifications",
+            },
+            tools: {
+              drawerLabel: "Tool Requests",
+              title: "Tools",
+              showBack: false,
+            },
+            spiffs: { drawerLabel: "Spiffs", title: "Spiffs" },
+            expenses: { drawerLabel: "Expenses", title: "Expenses" },
+            vehicles: {
+              drawerLabel: "Vehicles & Maintenance",
+              title: "Vehicles",
+              subtitle: "View fleet vehicles and maintenance requests.",
+              showBack: false,
+            },
+            clothing: { drawerLabel: "Clothing Requests", title: "Clothing" },
+            "time-off": {
+              drawerLabel: "Time Off Requests",
+              title: "Time Off",
+              showBack: false,
+            },
+            resources: {
+              drawerLabel: "Resources",
+              title: "Resources",
+              showBack: false,
+            },
+            suggestions: { drawerLabel: "Suggestions", title: "Suggestions" },
+            contacts: { drawerLabel: "Contacts", title: "Contacts" },
+            referrals: {
+              drawerLabel: "Partner Companies",
+              title: "Partner Companies",
+            },
+            settings: {
+              drawerLabel: "Settings",
+              title: "Settings",
+              showBack: false,
+            },
+          };
+          return { ...base, ...routeOptions[route.name] };
+        }}
+      />
+    </DrawerModalProvider>
   );
 }

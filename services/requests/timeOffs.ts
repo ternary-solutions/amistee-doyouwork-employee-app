@@ -1,35 +1,44 @@
 import type {
-  TimeOffRequest,
-  TimeOffRequestCreate,
-  TimeOffRequestList,
-} from '@/types/requests/timeOffs';
-import { apiRequest } from '@/utils/api';
+    TimeOffRequest,
+    TimeOffRequestCreate,
+    TimeOffRequestList,
+} from "@/types/requests/timeOffs";
+import { apiRequest } from "@/utils/api";
 
 export const timeOffRequestsService = {
   async list(
     page = 1,
     limit = 20,
-    status?: string
+    status?: string,
   ): Promise<TimeOffRequestList> {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
     });
-    if (status) params.append('status', status);
+    if (status) params.append("status", status);
     return apiRequest<unknown, TimeOffRequestList>(
       `time-off-requests/?${params.toString()}`,
-      { method: 'GET' },
+      { method: "GET" },
       true,
-      true
+      true,
+    );
+  },
+
+  async getById(id: string): Promise<TimeOffRequest> {
+    return apiRequest<unknown, TimeOffRequest>(
+      `time-off-requests/${id}`,
+      { method: "GET" },
+      true,
+      true,
     );
   },
 
   async create(data: TimeOffRequestCreate): Promise<TimeOffRequest> {
     return apiRequest<TimeOffRequestCreate, TimeOffRequest>(
-      'time-off-requests/',
-      { method: 'POST', data },
+      "time-off-requests/",
+      { method: "POST", data },
       true,
-      true
+      true,
     );
   },
 };

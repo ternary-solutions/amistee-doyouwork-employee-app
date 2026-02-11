@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "amistee-doyouwork-employee-app",
-    "slug": "amistee-doyouwork-employee-app",
+    "slug": "do-you-work",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -44,6 +44,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "623c5ac6-1b8a-406f-938c-1062a7a67f62"
+      }
+    },
+    "owner": "ternary-admins-organization"
   }
 }

@@ -1,6 +1,6 @@
-import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonListCard } from '@/components/ui/Skeleton';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SkeletonListCard } from "@/components/ui/Skeleton";
 import {
     background,
     border,
@@ -13,16 +13,16 @@ import {
     radius,
     spacing,
     typography,
-} from '@/constants/theme';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { vehiclesService } from '@/services/vehicles';
-import type { Vehicle } from '@/types/vehicles';
-import { getMediaSource } from '@/utils/api';
-import { getErrorMessage } from '@/utils/errorMessage';
-import { hapticImpact } from '@/utils/haptics';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+} from "@/constants/theme";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { vehiclesService } from "@/services/vehicles";
+import type { Vehicle } from "@/types/vehicles";
+import { getMediaSource } from "@/utils/api";
+import { getErrorMessage } from "@/utils/errorMessage";
+import { hapticImpact } from "@/utils/haptics";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert,
     FlatList,
@@ -33,16 +33,18 @@ import {
     Text,
     TextInput,
     View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function VehiclesListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>('all');
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [vehicleTypeFilter, setVehicleTypeFilter] = useState<string>("all");
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
   const vehicleTypeOptions = useMemo(() => {
@@ -50,26 +52,38 @@ export default function VehiclesListScreen() {
       .map((v) => v.vehicle_type?.name)
       .filter((n): n is string => Boolean(n));
     const unique = Array.from(new Set(names)).sort();
-    return ['all', ...unique];
+    return ["all", ...unique];
   }, [vehicles]);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await vehiclesService.list(
-        1,
-        50,
-        debouncedSearch || undefined,
-        vehicleTypeFilter === 'all' ? undefined : vehicleTypeFilter
-      );
-      setVehicles(res?.items ?? []);
-    } catch (error) {
-      console.error('Failed to load vehicles', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to load vehicles. Please try again.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, vehicleTypeFilter]);
+  const load = useCallback(
+    async (fromPullToRefresh = false) => {
+      try {
+        if (fromPullToRefresh) {
+          setRefreshing(true);
+        } else if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        const res = await vehiclesService.list(
+          1,
+          50,
+          debouncedSearch || undefined,
+          vehicleTypeFilter === "all" ? undefined : vehicleTypeFilter,
+        );
+        setVehicles(res?.items ?? []);
+        hasLoadedOnce.current = true;
+      } catch (error) {
+        console.error("Failed to load vehicles", error);
+        Alert.alert(
+          "Error",
+          getErrorMessage(error, "Failed to load vehicles. Please try again."),
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [debouncedSearch, vehicleTypeFilter],
+  );
 
   useEffect(() => {
     load();
@@ -77,9 +91,14 @@ export default function VehiclesListScreen() {
 
   useSetHeaderOptions(
     useMemo(
-      () => ({ title: 'Vehicles', showBack: false }),
-      []
-    )
+      () => ({
+        title: "Vehicles",
+        subtitle: "View fleet vehicles and maintenance requests.",
+        showBack: false,
+      }),
+      [],
+    ),
+    "/(app)/vehicles",
   );
 
   const renderHeader = () => (
@@ -94,39 +113,53 @@ export default function VehiclesListScreen() {
         autoCorrect={false}
       />
       {vehicles.length > 0 && vehicleTypeOptions.length > 1 ? (
-      <View style={styles.typeFilterRow}>
-        <Text style={styles.filterLabel}>Type:</Text>
-        <View style={styles.typeFilterOptions}>
-          {vehicleTypeOptions.map((opt) => (
-            <Pressable
-              key={opt}
-              style={[
-                styles.typeFilterBtn,
-                (vehicleTypeFilter === opt || (opt === 'all' && vehicleTypeFilter === 'all')) && styles.typeFilterBtnActive,
-              ]}
-              onPress={() => setVehicleTypeFilter(opt)}
-            >
-              <Text
+        <View style={styles.typeFilterRow}>
+          <Text style={styles.filterLabel}>Type:</Text>
+          <View style={styles.typeFilterOptions}>
+            {vehicleTypeOptions.map((opt) => (
+              <Pressable
+                key={opt}
                 style={[
-                  styles.typeFilterBtnText,
-                  (vehicleTypeFilter === opt || (opt === 'all' && vehicleTypeFilter === 'all')) && styles.typeFilterBtnTextActive,
+                  styles.typeFilterBtn,
+                  (vehicleTypeFilter === opt ||
+                    (opt === "all" && vehicleTypeFilter === "all")) &&
+                    styles.typeFilterBtnActive,
                 ]}
+                onPress={() => setVehicleTypeFilter(opt)}
               >
-                {opt === 'all' ? 'All' : opt}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.typeFilterBtnText,
+                    (vehicleTypeFilter === opt ||
+                      (opt === "all" && vehicleTypeFilter === "all")) &&
+                      styles.typeFilterBtnTextActive,
+                  ]}
+                >
+                  {opt === "all" ? "All" : opt}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
       ) : null}
     </View>
   );
 
   if (loading && vehicles.length === 0) {
     return (
-      <View style={[styles.skeletonContainer, { paddingBottom: spacing.xl + insets.bottom }]}>
+      <View
+        style={[
+          styles.skeletonContainer,
+          { paddingBottom: spacing.xl + insets.bottom },
+        ]}
+      >
         <View style={styles.filterWrap}>
-          <View style={[styles.searchInput, { height: 44, backgroundColor: border }]} />
+          <View
+            style={[
+              styles.searchInput,
+              { height: 44, backgroundColor: border },
+            ]}
+          />
         </View>
         <View style={styles.skeletonWrap}>
           <SkeletonListCard />
@@ -145,10 +178,19 @@ export default function VehiclesListScreen() {
       keyExtractor={(v) => v.id}
       style={{ backgroundColor: background }}
       ListHeaderComponent={renderHeader}
-      contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
-      ListEmptyComponent={<EmptyState message="No vehicles found." icon="car-outline" />}
+      contentContainerStyle={[
+        styles.list,
+        { paddingBottom: spacing.xl + insets.bottom },
+      ]}
+      ListEmptyComponent={
+        <EmptyState message="No vehicles found." icon="car-outline" />
+      }
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => load(true)}
+          tintColor={primary}
+        />
       }
       renderItem={({ item }) => (
         <AnimatedPressable
@@ -162,7 +204,10 @@ export default function VehiclesListScreen() {
         >
           <View style={styles.cardInner}>
             {item.photo_url ? (
-              <Image source={getMediaSource(item.photo_url)} style={styles.cardThumb} />
+              <Image
+                source={getMediaSource(item.photo_url)}
+                style={styles.cardThumb}
+              />
             ) : (
               <View style={styles.cardThumbPlaceholder}>
                 <Text style={styles.cardThumbEmoji}>🚗</Text>
@@ -172,20 +217,35 @@ export default function VehiclesListScreen() {
               <View style={styles.cardTitleRow}>
                 <Text style={styles.cardTitle}>{item.vehicle_name}</Text>
                 {item.license_plate ? (
-                  <Text style={styles.licensePlate} numberOfLines={1}>{item.license_plate}</Text>
+                  <Text style={styles.licensePlate} numberOfLines={1}>
+                    {item.license_plate}
+                  </Text>
                 ) : null}
               </View>
               <Text style={styles.meta}>
-                {[item.vehicle_type?.name, item.make && item.model ? `${item.make} ${item.model}` : null, item.year]
+                {[
+                  item.vehicle_type?.name,
+                  item.make && item.model ? `${item.make} ${item.model}` : null,
+                  item.year,
+                ]
                   .filter(Boolean)
-                  .join(' · ') || item.location?.name || '—'}
+                  .join(" · ") ||
+                  item.location?.name ||
+                  "—"}
               </Text>
               {item.location?.name ? (
                 <Text style={styles.meta}>{item.location.name}</Text>
               ) : null}
               {item.status !== undefined && item.status !== null && (
-                <View style={[styles.statusBadge, item.status ? styles.statusActive : styles.statusInactive]}>
-                  <Text style={styles.statusBadgeText}>{item.status ? 'Active' : 'Out of Service'}</Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    item.status ? styles.statusActive : styles.statusInactive,
+                  ]}
+                >
+                  <Text style={styles.statusBadgeText}>
+                    {item.status ? "Active" : "Out of Service"}
+                  </Text>
                 </View>
               )}
             </View>
@@ -197,7 +257,7 @@ export default function VehiclesListScreen() {
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   skeletonContainer: { flex: 1, backgroundColor: background },
   skeletonWrap: { paddingHorizontal: spacing.base },
   filterWrap: { paddingHorizontal: spacing.base, paddingBottom: spacing.md },
@@ -212,9 +272,18 @@ const styles = StyleSheet.create({
     backgroundColor: card,
     marginBottom: spacing.sm,
   },
-  filterLabel: { fontSize: 14, fontWeight: '500', color: mutedForeground, marginBottom: 6 },
+  filterLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: mutedForeground,
+    marginBottom: 6,
+  },
   typeFilterRow: { marginBottom: spacing.sm },
-  typeFilterOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  typeFilterOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
   typeFilterBtn: {
     paddingHorizontal: spacing.base,
     paddingVertical: 8,
@@ -225,7 +294,7 @@ const styles = StyleSheet.create({
   },
   typeFilterBtnActive: { backgroundColor: primary, borderColor: primary },
   typeFilterBtnText: { fontSize: 14, color: foreground },
-  typeFilterBtnTextActive: { color: primaryForeground, fontWeight: '600' },
+  typeFilterBtnTextActive: { color: primaryForeground, fontWeight: "600" },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   card: {
     backgroundColor: card,
@@ -235,30 +304,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: border,
   },
-  cardInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  cardInner: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   cardThumb: { width: 56, height: 56, borderRadius: radius.sm },
   cardThumbPlaceholder: {
     width: 56,
     height: 56,
     borderRadius: radius.sm,
     backgroundColor: muted,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardThumbEmoji: { fontSize: 24 },
   cardContent: { flex: 1 },
-  cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 },
+  cardTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
   cardTitle: { ...typography.title, color: foreground, flex: 1 },
   licensePlate: { fontSize: 12, color: mutedForeground, flexShrink: 0 },
   meta: { fontSize: 13, color: mutedForeground, marginBottom: 6 },
   statusBadge: {
     marginTop: 6,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: radius.full,
   },
-  statusActive: { backgroundColor: 'rgba(34, 197, 94, 0.2)' },
-  statusInactive: { backgroundColor: 'rgba(245, 158, 11, 0.2)' },
-  statusBadgeText: { fontSize: 11, fontWeight: '600', color: foreground },
+  statusActive: { backgroundColor: "rgba(34, 197, 94, 0.2)" },
+  statusInactive: { backgroundColor: "rgba(245, 158, 11, 0.2)" },
+  statusBadgeText: { fontSize: 11, fontWeight: "600", color: foreground },
 });

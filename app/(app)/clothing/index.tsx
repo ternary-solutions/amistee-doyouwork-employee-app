@@ -15,6 +15,7 @@ import {
     spacing,
     success,
 } from "@/constants/theme";
+import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
 import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
 import { clothingRequestsService } from "@/services/requests/clothings";
 import type {
@@ -25,7 +26,7 @@ import type {
 import { getErrorMessage } from "@/utils/errorMessage";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert,
     FlatList,
@@ -80,25 +81,33 @@ export default function ClothingScreen() {
   const [requests, setRequests] = useState<ClothingRequest[]>([]);
   const [objects, setObjects] = useState<ClothingObject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [size, setSize] = useState<ClothingSize>("One Size");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fromPullToRefresh = false) => {
     try {
-      setLoading(true);
+      if (fromPullToRefresh) {
+        setRefreshing(true);
+      } else if (!hasLoadedOnce.current) {
+        setLoading(true);
+      }
       const [listRes, objectsRes] = await Promise.all([
         clothingRequestsService.list(1, 50),
         clothingRequestsService.listObjects(),
       ]);
       setRequests(listRes?.items ?? []);
       setObjects(objectsRes ?? []);
+      hasLoadedOnce.current = true;
     } catch (error) {
       console.error("Failed to load clothing requests", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -126,7 +135,10 @@ export default function ClothingScreen() {
       }),
       [],
     ),
+    "/(app)/clothing",
   );
+
+  useCloseModalOnDrawerOpen(() => setModalOpen(false));
 
   const toggleObject = (objectId: string) => {
     setSelectedIds((prev) => {
@@ -210,8 +222,8 @@ export default function ClothingScreen() {
             ]}
             refreshControl={
               <RefreshControl
-                refreshing={loading}
-                onRefresh={load}
+                refreshing={refreshing}
+                onRefresh={() => load(true)}
                 tintColor={primary}
               />
             }

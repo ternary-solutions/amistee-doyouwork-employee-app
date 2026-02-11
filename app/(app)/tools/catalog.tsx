@@ -18,7 +18,7 @@ import type { Tool } from "@/types/tools";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -47,11 +47,14 @@ export default function ToolCatalogScreen() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
   const loadTools = useCallback(
-    async (pageNum: number, append: boolean) => {
+    async (pageNum: number, append: boolean, fromPullToRefresh = false) => {
       if (append) setLoadingMore(true);
-      else setLoading(true);
+      else if (fromPullToRefresh) setRefreshing(true);
+      else if (!hasLoadedOnce.current) setLoading(true);
       try {
         const data = await toolsService.list(
           pageNum,
@@ -63,6 +66,7 @@ export default function ToolCatalogScreen() {
         setPage(pageNum);
         setTotalPages(data?.total_pages ?? 1);
         setTotalCount(data?.total ?? 0);
+        if (!append) hasLoadedOnce.current = true;
       } catch (error) {
         console.error("Failed to load tools", error);
         Alert.alert(
@@ -72,6 +76,7 @@ export default function ToolCatalogScreen() {
       } finally {
         setLoading(false);
         setLoadingMore(false);
+        setRefreshing(false);
       }
     },
     [debouncedSearch],
@@ -192,8 +197,8 @@ export default function ToolCatalogScreen() {
           ListFooterComponent={ListFooter}
           refreshControl={
             <RefreshControl
-              refreshing={loading && !loadingMore}
-              onRefresh={() => loadTools(1, false)}
+              refreshing={refreshing}
+              onRefresh={() => loadTools(1, false, true)}
               tintColor={primary}
             />
           }

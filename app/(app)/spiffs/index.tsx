@@ -16,18 +16,20 @@ import {
   spacing,
   success,
 } from "@/constants/theme";
+import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
 import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { mediaService } from "@/services/media";
 import { spiffsService } from "@/services/spiffs";
 import type { Spiff } from "@/types/spiffs";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { format, startOfDay, subDays } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -35,8 +37,10 @@ import {
   Image,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -45,8 +49,14 @@ const STATUS_COLORS: Record<string, string> = {
   Pending: mutedForeground,
   Approved: primary,
   Denied: destructive,
-  Paid: success,
 };
+
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "Pending", label: "Pending" },
+  { value: "Approved", label: "Approved" },
+  { value: "Denied", label: "Denied" },
+];
 
 export default function SpiffsScreen() {
   const router = useRouter();
@@ -57,44 +67,72 @@ export default function SpiffsScreen() {
     active_spiffs: number;
     approved_spiffs: number;
   } | null>(null);
-  const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
+  const [types, setTypes] = useState<
+    { id: string; name: string; predetermined_amount?: string | number }[]
+  >([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [typeId, setTypeId] = useState("");
   const [date, setDate] = useState("");
-  const [amount, setAmount] = useState("");
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [attachments, setAttachments] = useState<
     { uri: string; uploading?: boolean }[]
   >([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const hasLoadedOnce = useRef(false);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [listRes, typesRes, summaryRes] = await Promise.all([
-        spiffsService.list(1, 50),
-        spiffsService.listTypes(),
-        spiffsService.getSummary().catch(() => null),
-      ]);
-      setSpiffs(listRes?.items ?? []);
-      setTypes(typesRes?.map((t) => ({ id: t.id, name: t.name })) ?? []);
-      if (summaryRes) {
-        setSummary({
-          total_earned: Number(summaryRes.total_earned ?? 0),
-          active_spiffs: summaryRes.active_spiffs ?? 0,
-          approved_spiffs: summaryRes.approved_spiffs ?? 0,
-        });
-      } else {
-        setSummary(null);
+  const load = useCallback(
+    async (fromPullToRefresh = false) => {
+      try {
+        if (fromPullToRefresh) {
+          setRefreshing(true);
+        } else if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        const [listRes, typesRes, summaryRes] = await Promise.all([
+          spiffsService.list(
+            1,
+            50,
+            debouncedSearch || undefined,
+            statusFilter || undefined,
+            typeFilter || undefined,
+          ),
+          spiffsService.listTypes(),
+          spiffsService.getSummary().catch(() => null),
+        ]);
+        setSpiffs(listRes?.items ?? []);
+        setTypes(
+          typesRes?.map((t) => ({
+            id: t.id,
+            name: t.name,
+            predetermined_amount: t.predetermined_amount,
+          })) ?? [],
+        );
+        if (summaryRes) {
+          setSummary({
+            total_earned: Number(summaryRes.total_earned ?? 0),
+            active_spiffs: summaryRes.active_spiffs ?? 0,
+            approved_spiffs: summaryRes.approved_spiffs ?? 0,
+          });
+        } else {
+          setSummary(null);
+        }
+        hasLoadedOnce.current = true;
+      } catch (error) {
+        console.error("Failed to load spiffs", error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (error) {
-      console.error("Failed to load spiffs", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [debouncedSearch, statusFilter, typeFilter],
+  );
 
   useEffect(() => {
     load();
@@ -105,6 +143,8 @@ export default function SpiffsScreen() {
       setAttachments([]);
     }
   }, [modalOpen]);
+
+  useCloseModalOnDrawerOpen(() => setModalOpen(false));
 
   // Prefill date to today when opening create modal
   useEffect(() => {
@@ -133,6 +173,7 @@ export default function SpiffsScreen() {
       }),
       [],
     ),
+    "/(app)/spiffs", // Only apply when on list; let detail screen set its own header
   );
 
   const pickImage = useCallback(async () => {
@@ -168,8 +209,21 @@ export default function SpiffsScreen() {
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
+  const selectedType = types.find((t) => t.id === typeId);
+  const typeAmount =
+    selectedType?.predetermined_amount != null
+      ? Number(selectedType.predetermined_amount)
+      : null;
+
   const handleCreate = async () => {
-    if (!typeId || !date || !amount.trim()) return;
+    if (!typeId || !date) return;
+    if (typeAmount == null || Number.isNaN(typeAmount)) {
+      Alert.alert(
+        "Invalid spiff type",
+        "This spiff type has no amount configured. Please select a different type.",
+      );
+      return;
+    }
     try {
       setSubmitting(true);
       const attachmentUrls: string[] = [];
@@ -202,14 +256,13 @@ export default function SpiffsScreen() {
       await spiffsService.create({
         spiff_type_id: typeId,
         spiff_date: date,
-        amount: Number(amount) || amount,
+        amount: typeAmount,
         details: details.trim() || undefined,
         ...(attachmentUrls.length > 0 && { attachment_urls: attachmentUrls }),
       });
       setModalOpen(false);
       setTypeId("");
       setDate("");
-      setAmount("");
       setDetails("");
       setAttachments([]);
       load();
@@ -222,10 +275,6 @@ export default function SpiffsScreen() {
       setSubmitting(false);
     }
   };
-
-  const totalPaid = spiffs
-    .filter((s) => s.status === "Paid" && s.amount)
-    .reduce((sum, s) => sum + Number(s.amount), 0);
 
   const showSummaryCard =
     summary &&
@@ -266,54 +315,93 @@ export default function SpiffsScreen() {
             </View>
           </View>
         )}
-        {totalPaid > 0 && !showSummaryCard && (
-          <View style={styles.totalCard}>
-            <Text style={styles.totalLabel}>Total earned (Paid)</Text>
-            <Text style={styles.totalAmount}>${totalPaid.toFixed(2)}</Text>
-          </View>
-        )}
-        {spiffs.length === 0 ? (
-          <View style={[styles.fill, { paddingBottom: insets.bottom }]}>
-            <EmptyState
-              message="No spiffs yet."
-              action={{ label: "New spiff", onPress: () => setModalOpen(true) }}
-            />
-          </View>
-        ) : (
-          <FlatList
-            data={spiffs}
-            keyExtractor={(s) => s.id}
-            style={{ backgroundColor: background }}
-            contentContainerStyle={[
-              styles.list,
-              { paddingBottom: spacing.xl + insets.bottom },
-            ]}
-            renderItem={({ item, index }) => (
-              <AnimatedFadeIn delay={index * 30} duration={250}>
-                <View style={styles.cardWrap}>
-                  <ListCard
-                    title={item.spiff_type?.name ?? "Spiff"}
-                    meta={[
-                      `${new Date(item.spiff_date).toLocaleDateString()} · $${item.amount}`,
+        <FlatList
+          data={spiffs}
+          keyExtractor={(s) => s.id}
+          style={{ backgroundColor: background }}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: spacing.xl + insets.bottom },
+          ]}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search spiffs..."
+                placeholderTextColor={mutedForeground}
+              />
+              <View style={styles.filterRow}>
+                {STATUS_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt.value || "all"}
+                    style={[
+                      styles.filterChip,
+                      statusFilter === opt.value && styles.filterChipActive,
                     ]}
-                    badge={{
-                      text: item.status,
-                      backgroundColor:
-                        STATUS_COLORS[item.status] ?? mutedForeground,
-                    }}
-                    onPress={() => router.push(`/(app)/spiffs/${item.id}`)}
+                    onPress={() => setStatusFilter(opt.value)}
                   >
-                    {item.details ? (
-                      <Text style={styles.details} numberOfLines={2}>
-                        {item.details}
-                      </Text>
-                    ) : null}
-                  </ListCard>
-                </View>
-              </AnimatedFadeIn>
-            )}
-          />
-        )}
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        statusFilter === opt.value &&
+                          styles.filterChipTextActive,
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              tintColor={primary}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyState
+              message={
+                debouncedSearch || statusFilter || typeFilter
+                  ? "No spiffs match your filters."
+                  : "No spiffs yet."
+              }
+              action={
+                !debouncedSearch && !statusFilter && !typeFilter
+                  ? { label: "New spiff", onPress: () => setModalOpen(true) }
+                  : undefined
+              }
+            />
+          }
+          renderItem={({ item, index }) => (
+            <AnimatedFadeIn delay={index * 30} duration={250}>
+              <View style={styles.cardWrap}>
+                <ListCard
+                  title={item.spiff_type?.name ?? "Spiff"}
+                  meta={[
+                    `${new Date(item.spiff_date).toLocaleDateString()} · $${item.amount}`,
+                  ]}
+                  badge={{
+                    text: item.status,
+                    backgroundColor:
+                      STATUS_COLORS[item.status] ?? mutedForeground,
+                  }}
+                  onPress={() => router.push(`/(app)/spiffs/${item.id}`)}
+                >
+                  {item.details ? (
+                    <Text style={styles.details} numberOfLines={2}>
+                      {item.details}
+                    </Text>
+                  ) : null}
+                </ListCard>
+              </View>
+            </AnimatedFadeIn>
+          )}
+        />
       </AnimatedFadeIn>
       <FormModal
         visible={modalOpen}
@@ -341,10 +429,19 @@ export default function SpiffsScreen() {
                 ]}
               >
                 {t.name}
+                {t.predetermined_amount != null
+                  ? ` · $${Number(t.predetermined_amount).toFixed(2)}`
+                  : ""}
               </Text>
             </Pressable>
           ))}
         </View>
+        {selectedType && typeAmount != null && !Number.isNaN(typeAmount) && (
+          <View style={styles.amountDisplay}>
+            <Text style={styles.amountLabel}>Amount</Text>
+            <Text style={styles.amountValue}>${typeAmount.toFixed(2)}</Text>
+          </View>
+        )}
         <Text style={styles.label}>Date</Text>
         <Pressable
           style={styles.dateBtn}
@@ -371,14 +468,6 @@ export default function SpiffsScreen() {
             }}
           />
         )}
-        <Text style={styles.label}>Amount</Text>
-        <BottomSheetTextInput
-          style={styles.input}
-          value={amount}
-          onChangeText={setAmount}
-          placeholder="0"
-          keyboardType="decimal-pad"
-        />
         <Text style={styles.label}>Details (optional)</Text>
         <BottomSheetTextInput
           style={[styles.input, styles.textArea]}
@@ -455,16 +544,36 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   summaryChipText: { fontSize: 13, color: foreground },
-  totalCard: {
-    marginHorizontal: spacing.base,
-    marginBottom: spacing.base,
-    padding: spacing.base,
-    backgroundColor: "#f0fdf4",
-    borderRadius: radius.base,
-  },
-  totalLabel: { fontSize: 13, color: mutedForeground },
-  totalAmount: { fontSize: 22, fontWeight: "700", color: success },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
+  header: {
+    width: "100%",
+    alignSelf: "stretch",
+    marginBottom: spacing.base,
+  },
+  searchInput: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    fontSize: 16,
+    color: foreground,
+    marginBottom: spacing.md,
+  },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: muted,
+  },
+  filterChipActive: { backgroundColor: primary },
+  filterChipText: { fontSize: 14, color: foreground },
+  filterChipTextActive: { color: primaryForeground },
   cardWrap: { marginBottom: spacing.md },
   details: { fontSize: 13, color: mutedForeground, marginTop: 4 },
   label: {
@@ -506,6 +615,20 @@ const styles = StyleSheet.create({
   pickerOptionActive: { backgroundColor: primary },
   pickerOptionText: { fontSize: 14, color: foreground },
   pickerOptionTextActive: { color: primaryForeground },
+  amountDisplay: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: muted,
+    borderRadius: radius.sm,
+    marginBottom: spacing.base,
+  },
+  amountLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: mutedForeground,
+    marginBottom: 4,
+  },
+  amountValue: { fontSize: 18, fontWeight: "600", color: success },
   attachBtn: {
     flexDirection: "row",
     alignItems: "center",

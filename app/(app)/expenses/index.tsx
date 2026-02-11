@@ -1,10 +1,10 @@
-import { AnimatedFadeIn } from '@/components/ui/AnimatedFadeIn';
-import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { ListCard } from '@/components/ui/ListCard';
-import { SkeletonDetailCard } from '@/components/ui/Skeleton';
-import { FormModal } from '@/components/ui/FormModal';
-import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { AnimatedFadeIn } from "@/components/ui/AnimatedFadeIn";
+import { AnimatedPressable } from "@/components/ui/AnimatedPressable";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { FormModal } from "@/components/ui/FormModal";
+import { ListCard } from "@/components/ui/ListCard";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { SkeletonDetailCard } from "@/components/ui/Skeleton";
 import {
     background,
     border,
@@ -17,21 +17,22 @@ import {
     radius,
     spacing,
     statusBadge,
-} from '@/constants/theme';
-import { expensesService } from '@/services/expenses';
-import { mediaService } from '@/services/media';
-import type { Expense } from '@/types/expenses';
-import { getErrorMessage } from '@/utils/errorMessage';
-import { toast as showToast } from '@/utils/toast';
-import { hapticImpact } from '@/utils/haptics';
-import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { format, startOfDay, subDays } from 'date-fns';
-import * as ImagePicker from 'expo-image-picker';
-import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+} from "@/constants/theme";
+import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { expensesService } from "@/services/expenses";
+import { mediaService } from "@/services/media";
+import type { Expense } from "@/types/expenses";
+import { getErrorMessage } from "@/utils/errorMessage";
+import { toast as showToast } from "@/utils/toast";
+import { Ionicons } from "@expo/vector-icons";
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { format, startOfDay, subDays } from "date-fns";
+import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert,
     Image,
@@ -41,22 +42,27 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function getStatusBadgeStyle(status: string) {
   const s = statusBadge[status as keyof typeof statusBadge];
-  return s ?? { bg: mutedForeground, text: '#ffffff' };
+  return s ?? { bg: mutedForeground, text: "#ffffff" };
 }
 
-type Filter = 'open' | 'closed';
+type Filter = "open" | "closed";
 
 function isOpen(e: Expense) {
-  return e.status === 'Pending';
+  return e.status === "Pending";
 }
 function isClosed(e: Expense) {
-  return e.status === 'Reimbursed' || e.status === 'Denied' || e.status === 'Approved';
+  return (
+    e.status === "Reimbursed" ||
+    e.status === "Denied" ||
+    e.status === "Approved"
+  );
 }
 
 export default function ExpensesScreen() {
@@ -65,44 +71,65 @@ export default function ExpensesScreen() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<Filter>('open');
-  const [expenseTypeFilter, setExpenseTypeFilter] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<Filter>("open");
+  const [search, setSearch] = useState("");
+  const [expenseTypeFilter, setExpenseTypeFilter] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), 300);
+  const hasLoadedOnce = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [typeId, setTypeId] = useState('');
-  const [date, setDate] = useState('');
-  const [amount, setAmount] = useState('');
-  const [details, setDetails] = useState('');
+  const [typeId, setTypeId] = useState("");
+  const [date, setDate] = useState("");
+  const [amount, setAmount] = useState("");
+  const [details, setDetails] = useState("");
   const [attachmentUri, setAttachmentUri] = useState<string | null>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const filteredExpenses = expenses.filter((e) =>
-    filter === 'open' ? isOpen(e) : isClosed(e)
+    filter === "open" ? isOpen(e) : isClosed(e),
   );
   const totalPending = expenses
-    .filter((e) => e.status !== 'Reimbursed')
+    .filter((e) => e.status !== "Reimbursed")
     .reduce((sum, e) => sum + Number(e.amount ?? 0), 0);
   const totalPaid = expenses
-    .filter((e) => e.status === 'Reimbursed')
+    .filter((e) => e.status === "Reimbursed")
     .reduce((sum, e) => sum + Number(e.amount ?? 0), 0);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [listRes, typesRes] = await Promise.all([
-        expensesService.list(1, 50, undefined, expenseTypeFilter || undefined),
-        expensesService.listTypes(),
-      ]);
-      setExpenses(listRes?.items ?? []);
-      setTypes(typesRes?.map((t) => ({ id: t.id, name: t.name })) ?? []);
-    } catch (error) {
-      console.error('Failed to load expenses', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to load expenses. Please try again.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [expenseTypeFilter]);
+  const load = useCallback(
+    async (fromPullToRefresh = false) => {
+      try {
+        if (fromPullToRefresh) {
+          setRefreshing(true);
+        } else if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        const [listRes, typesRes] = await Promise.all([
+          expensesService.list(
+            1,
+            50,
+            debouncedSearch || undefined,
+            expenseTypeFilter || undefined,
+          ),
+          expensesService.listTypes(),
+        ]);
+        setExpenses(listRes?.items ?? []);
+        setTypes(typesRes?.map((t) => ({ id: t.id, name: t.name })) ?? []);
+        hasLoadedOnce.current = true;
+      } catch (error) {
+        console.error("Failed to load expenses", error);
+        Alert.alert(
+          "Error",
+          getErrorMessage(error, "Failed to load expenses. Please try again."),
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [debouncedSearch, expenseTypeFilter],
+  );
 
   useEffect(() => {
     load();
@@ -118,23 +145,29 @@ export default function ExpensesScreen() {
     }, []),
   );
 
+  useCloseModalOnDrawerOpen(() => setModalOpen(false));
+
   // Prefill date to today when opening create modal
   useEffect(() => {
     if (modalOpen && !date) {
-      setDate(format(startOfDay(new Date()), 'yyyy-MM-dd'));
+      setDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
     }
   }, [modalOpen, date]);
 
   useSetHeaderOptions(
     useMemo(
       () => ({
-        title: 'Expenses',
-        subtitle: 'Submit and track your work-related expenses',
+        title: "Expenses",
+        subtitle: "Submit and track your work-related expenses",
         showBack: false,
-        headerAction: { label: 'New expense', onPress: () => setModalOpen(true) },
+        headerAction: {
+          label: "New expense",
+          onPress: () => setModalOpen(true),
+        },
       }),
-      []
-    )
+      [],
+    ),
+    "/(app)/expenses",
   );
 
   useEffect(() => {
@@ -145,12 +178,13 @@ export default function ExpensesScreen() {
 
   const pickAttachment = useCallback(async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
         Alert.alert(
-          'Permission Required',
-          'Please allow access to your photo library to add an attachment.',
-          [{ text: 'OK' }]
+          "Permission Required",
+          "Please allow access to your photo library to add an attachment.",
+          [{ text: "OK" }],
         );
         return;
       }
@@ -162,8 +196,8 @@ export default function ExpensesScreen() {
       if (result.canceled || !result.assets?.[0]) return;
       setAttachmentUri(result.assets[0].uri);
     } catch (error) {
-      console.error('Pick attachment failed', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      console.error("Pick attachment failed", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
     }
   }, []);
 
@@ -173,13 +207,16 @@ export default function ExpensesScreen() {
 
   const handleCreate = async () => {
     if (!typeId || !date || !amount.trim()) return;
-    const amountNum = parseFloat(amount.replace(/,/g, '').trim());
+    const amountNum = parseFloat(amount.replace(/,/g, "").trim());
     if (Number.isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Invalid amount', 'Please enter a valid amount greater than 0.');
+      Alert.alert(
+        "Invalid amount",
+        "Please enter a valid amount greater than 0.",
+      );
       return;
     }
     if (amountNum > 50000) {
-      Alert.alert('Invalid amount', 'Amount cannot exceed $50,000.');
+      Alert.alert("Invalid amount", "Amount cannot exceed $50,000.");
       return;
     }
     try {
@@ -188,18 +225,26 @@ export default function ExpensesScreen() {
       if (attachmentUri) {
         setUploadingAttachment(true);
         try {
-          const filename = attachmentUri.split('/').pop() || 'expense-photo.jpg';
+          const filename =
+            attachmentUri.split("/").pop() || "expense-photo.jpg";
           const match = /\.(\w+)$/.exec(filename);
-          const type = match ? `image/${match[1]}` : 'image/jpeg';
+          const type = match ? `image/${match[1]}` : "image/jpeg";
           const res = await mediaService.uploadFile(
-            { uri: Platform.OS === 'web' ? attachmentUri : attachmentUri, type, name: filename },
-            'expenses',
-            'images'
+            {
+              uri: Platform.OS === "web" ? attachmentUri : attachmentUri,
+              type,
+              name: filename,
+            },
+            "expenses",
+            "images",
           );
           attachmentUrl = res.file_url;
         } catch (err) {
-          console.error('Upload attachment failed', err);
-          Alert.alert('Error', 'Failed to upload attachment. Please try again.');
+          console.error("Upload attachment failed", err);
+          Alert.alert(
+            "Error",
+            "Failed to upload attachment. Please try again.",
+          );
           return;
         } finally {
           setUploadingAttachment(false);
@@ -209,20 +254,23 @@ export default function ExpensesScreen() {
         expense_type_id: typeId,
         expense_date: date,
         amount: amountNum,
-        details: details.trim() || '',
+        details: details.trim() || "",
         ...(attachmentUrl && { attachment_url: attachmentUrl }),
       });
       setModalOpen(false);
-      setTypeId('');
-      setDate('');
-      setAmount('');
-      setDetails('');
+      setTypeId("");
+      setDate("");
+      setAmount("");
+      setDetails("");
       setAttachmentUri(null);
-      showToast.success('Expense submitted successfully.');
+      showToast.success("Expense submitted successfully.");
       load();
     } catch (error) {
-      console.error('Create expense failed', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to submit expense. Please try again.'));
+      console.error("Create expense failed", error);
+      Alert.alert(
+        "Error",
+        getErrorMessage(error, "Failed to submit expense. Please try again."),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -232,7 +280,10 @@ export default function ExpensesScreen() {
     return (
       <ScrollView
         style={[styles.scroll, { backgroundColor: background }]}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xl + insets.bottom }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: spacing.xl + insets.bottom },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.skeletonWrap}>
@@ -249,88 +300,159 @@ export default function ExpensesScreen() {
   return (
     <>
       <AnimatedFadeIn style={{ flex: 1 }} duration={280}>
-      <ScrollView
-        style={[styles.scroll, { backgroundColor: background }]}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: spacing.xl + insets.bottom }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
-        }
-      >
-        {expenses.length > 0 && (
-          <>
+        <ScrollView
+          style={[styles.scroll, { backgroundColor: background }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: spacing.xl + insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              tintColor={primary}
+            />
+          }
+        >
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search expenses..."
+            placeholderTextColor={mutedForeground}
+          />
+          {expenses.length > 0 && (
             <View style={styles.summaryRow}>
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>Total Pending</Text>
                 <Text style={styles.summaryValue}>
-                  ${totalPending.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  $
+                  {totalPending.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
               </View>
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>Total Paid</Text>
                 <Text style={styles.summaryValue}>
-                  ${totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  $
+                  {totalPaid.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
               </View>
             </View>
-            <SegmentedControl
-              options={[{ value: 'open', label: 'Open' }, { value: 'closed', label: 'Closed' }]}
-              value={filter}
-              onChange={(v) => setFilter(v as Filter)}
-            />
-            {types.length > 0 && (
-              <View style={styles.typeFilterWrap}>
-                <Text style={styles.typeFilterLabel}>Filter by type</Text>
-                <View style={styles.typeFilterRow}>
-                  <AnimatedPressable
-                    style={[styles.typeFilterBtn, !expenseTypeFilter && styles.typeFilterBtnActive]}
-                    onPress={() => setExpenseTypeFilter('')}
-                  >
-                    <Text style={[styles.typeFilterBtnText, !expenseTypeFilter && styles.typeFilterBtnTextActive]}>All</Text>
-                  </AnimatedPressable>
-                  {types.map((t) => (
-                    <AnimatedPressable
-                      key={t.id}
-                      style={[styles.typeFilterBtn, expenseTypeFilter === t.id && styles.typeFilterBtnActive]}
-                      onPress={() => setExpenseTypeFilter(t.id)}
-                    >
-                      <Text style={[styles.typeFilterBtnText, expenseTypeFilter === t.id && styles.typeFilterBtnTextActive]}>{t.name}</Text>
-                    </AnimatedPressable>
-                  ))}
-                </View>
-              </View>
-            )}
-          </>
-        )}
-
-        {expenses.length === 0 ? (
-          <EmptyState
-            message="No expenses yet. Tap + to add one."
-            icon="receipt-outline"
-            action={{ label: 'Add expense', onPress: () => setModalOpen(true) }}
+          )}
+          <SegmentedControl
+            options={[
+              { value: "open", label: "Open" },
+              { value: "closed", label: "Closed" },
+            ]}
+            value={filter}
+            onChange={(v) => setFilter(v as Filter)}
           />
-        ) : filteredExpenses.length === 0 ? (
-          <EmptyState message={`No ${filter === 'open' ? 'open' : 'closed'} expenses.`} icon="receipt-outline" />
-        ) : (
-          filteredExpenses.map((item, index) => (
-            <AnimatedFadeIn key={item.id} delay={index * 30} duration={250}>
-              <View style={styles.cardWrap}>
-                <ListCard
-                  title={item.expense_type?.name ?? 'Expense'}
-                  meta={[
-                    new Date(item.expense_date).toLocaleDateString(),
-                    `$${Number(item.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          {types.length > 0 && (
+            <View style={styles.typeFilterWrap}>
+              <Text style={styles.typeFilterLabel}>Filter by type</Text>
+              <View style={styles.typeFilterRow}>
+                <AnimatedPressable
+                  style={[
+                    styles.typeFilterBtn,
+                    !expenseTypeFilter && styles.typeFilterBtnActive,
                   ]}
-                  badge={{ text: item.status, backgroundColor: getStatusBadgeStyle(item.status).bg }}
-                  onPress={() => router.push(`/(app)/expenses/${item.id}`)}
+                  onPress={() => setExpenseTypeFilter("")}
                 >
-                  {item.details ? <Text style={styles.expenseCardDetails} numberOfLines={2}>{item.details}</Text> : null}
-                </ListCard>
+                  <Text
+                    style={[
+                      styles.typeFilterBtnText,
+                      !expenseTypeFilter && styles.typeFilterBtnTextActive,
+                    ]}
+                  >
+                    All
+                  </Text>
+                </AnimatedPressable>
+                {types.map((t) => (
+                  <AnimatedPressable
+                    key={t.id}
+                    style={[
+                      styles.typeFilterBtn,
+                      expenseTypeFilter === t.id && styles.typeFilterBtnActive,
+                    ]}
+                    onPress={() =>
+                      setExpenseTypeFilter(
+                        expenseTypeFilter === t.id ? "" : t.id,
+                      )
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.typeFilterBtnText,
+                        expenseTypeFilter === t.id &&
+                          styles.typeFilterBtnTextActive,
+                      ]}
+                    >
+                      {t.name}
+                    </Text>
+                  </AnimatedPressable>
+                ))}
               </View>
-            </AnimatedFadeIn>
-          ))
-        )}
-      </ScrollView>
+            </View>
+          )}
+
+          {expenses.length === 0 ? (
+            <EmptyState
+              message={
+                debouncedSearch || expenseTypeFilter
+                  ? "No expenses match your filters."
+                  : "No expenses yet. Tap + to add one."
+              }
+              icon="receipt-outline"
+              action={
+                !debouncedSearch && !expenseTypeFilter
+                  ? { label: "Add expense", onPress: () => setModalOpen(true) }
+                  : undefined
+              }
+            />
+          ) : filteredExpenses.length === 0 ? (
+            <EmptyState
+              message={
+                debouncedSearch || expenseTypeFilter
+                  ? "No expenses match your filters."
+                  : `No ${filter === "open" ? "open" : "closed"} expenses.`
+              }
+              icon="receipt-outline"
+            />
+          ) : (
+            filteredExpenses.map((item, index) => (
+              <AnimatedFadeIn key={item.id} delay={index * 30} duration={250}>
+                <View style={styles.cardWrap}>
+                  <ListCard
+                    title={item.expense_type?.name ?? "Expense"}
+                    meta={[
+                      new Date(item.expense_date).toLocaleDateString(),
+                      `$${Number(item.amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                    ]}
+                    badge={{
+                      text: item.status,
+                      backgroundColor: getStatusBadgeStyle(item.status).bg,
+                      textColor: getStatusBadgeStyle(item.status).text,
+                    }}
+                    onPress={() => router.push(`/(app)/expenses/${item.id}`)}
+                  >
+                    {item.details ? (
+                      <Text style={styles.expenseCardDetails} numberOfLines={2}>
+                        {item.details}
+                      </Text>
+                    ) : null}
+                  </ListCard>
+                </View>
+              </AnimatedFadeIn>
+            ))
+          )}
+        </ScrollView>
       </AnimatedFadeIn>
       <FormModal
         visible={modalOpen}
@@ -345,10 +467,20 @@ export default function ExpensesScreen() {
           {types.map((t) => (
             <Pressable
               key={t.id}
-              style={[styles.pickerOption, typeId === t.id && styles.pickerOptionActive]}
+              style={[
+                styles.pickerOption,
+                typeId === t.id && styles.pickerOptionActive,
+              ]}
               onPress={() => setTypeId(t.id)}
             >
-              <Text style={[styles.pickerOptionText, typeId === t.id && styles.pickerOptionTextActive]}>{t.name}</Text>
+              <Text
+                style={[
+                  styles.pickerOptionText,
+                  typeId === t.id && styles.pickerOptionTextActive,
+                ]}
+              >
+                {t.name}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -357,50 +489,78 @@ export default function ExpensesScreen() {
           style={styles.dateBtn}
           onPress={() => setShowDatePicker(true)}
         >
-          <Text style={[styles.dateBtnText, !date && styles.dateBtnPlaceholder]}>
-            {date ? new Date(date + 'T12:00:00').toLocaleDateString() : 'Select date'}
+          <Text
+            style={[styles.dateBtnText, !date && styles.dateBtnPlaceholder]}
+          >
+            {date
+              ? new Date(date + "T12:00:00").toLocaleDateString()
+              : "Select date"}
           </Text>
         </Pressable>
         {showDatePicker && (
           <DateTimePicker
-            value={date ? new Date(date + 'T12:00:00') : new Date()}
+            value={date ? new Date(date + "T12:00:00") : new Date()}
             mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            display={Platform.OS === "ios" ? "spinner" : "default"}
             minimumDate={subDays(startOfDay(new Date()), 90)}
             maximumDate={startOfDay(new Date())}
             onChange={(_, selectedDate) => {
-              setShowDatePicker(Platform.OS === 'ios');
-              if (selectedDate) setDate(format(selectedDate, 'yyyy-MM-dd'));
+              setShowDatePicker(Platform.OS === "ios");
+              if (selectedDate) setDate(format(selectedDate, "yyyy-MM-dd"));
             }}
           />
         )}
         <Text style={styles.label}>Amount</Text>
-        <BottomSheetTextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="0" placeholderTextColor={mutedForeground} keyboardType="decimal-pad" />
+        <BottomSheetTextInput
+          style={styles.input}
+          value={amount}
+          onChangeText={setAmount}
+          placeholder="0"
+          placeholderTextColor={mutedForeground}
+          keyboardType="decimal-pad"
+        />
         <Text style={styles.label}>Details</Text>
-        <BottomSheetTextInput style={[styles.input, styles.textArea]} value={details} onChangeText={setDetails} placeholder="Description" placeholderTextColor={mutedForeground} multiline />
+        <BottomSheetTextInput
+          style={[styles.input, styles.textArea]}
+          value={details}
+          onChangeText={setDetails}
+          placeholder="Description"
+          placeholderTextColor={mutedForeground}
+          multiline
+        />
         <Text style={styles.label}>Attachment (optional)</Text>
         <View style={styles.attachmentRow}>
           <Pressable
-            style={[styles.attachmentBtn, attachmentUri && styles.attachmentBtnHasFile]}
+            style={[
+              styles.attachmentBtn,
+              attachmentUri && styles.attachmentBtnHasFile,
+            ]}
             onPress={pickAttachment}
             disabled={uploadingAttachment}
           >
             {attachmentUri ? (
               <View style={styles.attachmentPreview}>
-                <Image source={{ uri: attachmentUri }} style={styles.attachmentThumb} />
+                <Image
+                  source={{ uri: attachmentUri }}
+                  style={styles.attachmentThumb}
+                />
                 <Pressable
                   style={styles.removeAttachmentBtn}
                   onPress={removeAttachment}
                   hitSlop={8}
                 >
-                  <Ionicons name="close-circle" size={24} color={mutedForeground} />
+                  <Ionicons
+                    name="close-circle"
+                    size={24}
+                    color={mutedForeground}
+                  />
                 </Pressable>
               </View>
             ) : (
               <>
                 <Ionicons name="image-outline" size={24} color={primary} />
                 <Text style={styles.attachmentBtnText}>
-                  {uploadingAttachment ? 'Uploading...' : 'Add photo'}
+                  {uploadingAttachment ? "Uploading..." : "Add photo"}
                 </Text>
               </>
             )}
@@ -412,28 +572,54 @@ export default function ExpensesScreen() {
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   skeletonWrap: { paddingHorizontal: spacing.base, gap: spacing.md },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.base, paddingTop: spacing.base },
-  summaryRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm, marginBottom: spacing.base },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.base,
+    paddingHorizontal: spacing.base,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: foreground,
+    backgroundColor: card,
+    marginBottom: spacing.base,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.base,
+  },
   summaryCard: {
     flex: 1,
     backgroundColor: card,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radius.base,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 2,
   },
-  summaryLabel: { fontSize: 12, fontWeight: '500', color: mutedForeground, marginBottom: 4 },
-  summaryValue: { fontSize: 20, fontWeight: '700', color: foreground },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: mutedForeground,
+    marginBottom: 4,
+  },
+  summaryValue: { fontSize: 20, fontWeight: "700", color: foreground },
   typeFilterWrap: { marginBottom: spacing.base },
-  typeFilterLabel: { fontSize: 14, fontWeight: '500', color: mutedForeground, marginBottom: 6 },
-  typeFilterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  typeFilterLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: mutedForeground,
+    marginBottom: 6,
+  },
+  typeFilterRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   typeFilterBtn: {
     paddingHorizontal: spacing.base,
     paddingVertical: 8,
@@ -444,55 +630,88 @@ const styles = StyleSheet.create({
   },
   typeFilterBtnActive: { backgroundColor: primary, borderColor: primary },
   typeFilterBtnText: { fontSize: 14, color: foreground },
-  typeFilterBtnTextActive: { color: primaryForeground, fontWeight: '600' },
+  typeFilterBtnTextActive: { color: primaryForeground, fontWeight: "600" },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   cardWrap: { marginBottom: spacing.md },
   expenseCardRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   expenseCardLeft: { flex: 1, marginRight: spacing.md },
-  expenseCardTitle: { fontSize: 18, fontWeight: '600', color: foreground, marginBottom: 8 },
+  expenseCardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: foreground,
+    marginBottom: 8,
+  },
   expenseCardDetails: { fontSize: 13, color: mutedForeground, marginBottom: 6 },
   expenseCardDate: { fontSize: 13, color: mutedForeground },
-  expenseCardRight: { alignItems: 'flex-end' },
+  expenseCardRight: { alignItems: "flex-end" },
   expenseCardBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: radius.full,
     marginBottom: 6,
   },
-  expenseCardBadgeText: { fontSize: 12, fontWeight: '500' },
-  expenseCardAmount: { fontSize: 20, fontWeight: '700', color: foreground },
+  expenseCardBadgeText: { fontSize: 12, fontWeight: "500" },
+  expenseCardAmount: { fontSize: 20, fontWeight: "700", color: foreground },
   details: { fontSize: 13, color: mutedForeground, marginTop: 4 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },
-  dateBtn: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base },
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 6,
+    color: foreground,
+  },
+  dateBtn: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+  },
   dateBtnText: { fontSize: 16, color: foreground },
   dateBtnPlaceholder: { color: mutedForeground },
-  input: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base, fontSize: 16 },
+  input: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+    fontSize: 16,
+  },
   textArea: { minHeight: 60 },
-  picker: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.base },
-  pickerOption: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.sm, backgroundColor: muted },
+  picker: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  pickerOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: muted,
+  },
   pickerOptionActive: { backgroundColor: primary },
   pickerOptionText: { fontSize: 14, color: foreground },
   pickerOptionTextActive: { color: primaryForeground },
   attachmentRow: { marginBottom: spacing.base },
   attachmentBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: spacing.sm,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.base,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: border,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
   },
-  attachmentBtnHasFile: { borderStyle: 'solid' },
-  attachmentBtnText: { fontSize: 14, fontWeight: '500', color: primary },
-  attachmentPreview: { position: 'relative' },
+  attachmentBtnHasFile: { borderStyle: "solid" },
+  attachmentBtnText: { fontSize: 14, fontWeight: "500", color: primary },
+  attachmentPreview: { position: "relative" },
   attachmentThumb: { width: 80, height: 80, borderRadius: radius.sm },
-  removeAttachmentBtn: { position: 'absolute', top: -8, right: -8 },
+  removeAttachmentBtn: { position: "absolute", top: -8, right: -8 },
 });

@@ -1,39 +1,38 @@
-import { WeekDaySelector } from '@/components/dashboard/WeekDaySelector';
-import { Card } from '@/components/ui/Card';
-import { SkeletonScheduleCard } from '@/components/ui/Skeleton';
-import { scheduleService } from '@/services/schedules';
-import type { MyScheduleResponse } from '@/types/schedules';
-import { useMainStore } from '@/store/main';
-import { getMediaSource } from '@/utils/api';
-import { getErrorMessage } from '@/utils/errorMessage';
+import { WeekDaySelector } from "@/components/dashboard/WeekDaySelector";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SkeletonScheduleCard } from "@/components/ui/Skeleton";
 import {
-  accent,
-  accentForeground,
-  background,
-  border,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  spacing,
-  typography,
-} from '@/constants/theme';
-import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { format } from 'date-fns';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+    accentForeground,
+    background,
+    border,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    spacing,
+    typography
+} from "@/constants/theme";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { scheduleService } from "@/services/schedules";
+import { useMainStore } from "@/store/main";
+import type { MyScheduleResponse } from "@/types/schedules";
+import { getMediaSource } from "@/utils/api";
+import { getErrorMessage } from "@/utils/errorMessage";
+import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
-  Image,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button } from '@/components/ui/Button';
+    Alert,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ScheduleScreen() {
   const router = useRouter();
@@ -41,32 +40,46 @@ export default function ScheduleScreen() {
   const me = useMainStore((s) => s.me);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [schedules, setSchedules] = useState<MyScheduleResponse[]>([]);
-  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  const dateStr = format(selectedDate, "yyyy-MM-dd");
 
   useSetHeaderOptions(
     useMemo(
       () => ({
-        title: 'My Schedule',
-        subtitle: 'View your assigned schedule by date.',
+        title: "My Schedule",
+        subtitle: "View your assigned schedule by date.",
         showBack: false,
       }),
       [],
     ),
   );
 
-  const loadSchedules = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await scheduleService.getMySchedule(dateStr);
-      setSchedules(res.filter((s) => s && s.vehicle !== undefined));
-    } catch (error) {
-      console.error('Failed to load schedules', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to load schedule. Please try again.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [dateStr]);
+  const loadSchedules = useCallback(
+    async (fromPullToRefresh = false) => {
+      try {
+        if (fromPullToRefresh) {
+          setRefreshing(true);
+        } else if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        const res = await scheduleService.getMySchedule(dateStr);
+        setSchedules(res.filter((s) => s && s.vehicle !== undefined));
+        hasLoadedOnce.current = true;
+      } catch (error) {
+        console.error("Failed to load schedules", error);
+        Alert.alert(
+          "Error",
+          getErrorMessage(error, "Failed to load schedule. Please try again."),
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [dateStr],
+  );
 
   useEffect(() => {
     if (!me) return;
@@ -76,13 +89,23 @@ export default function ScheduleScreen() {
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: background }]}
-      contentContainerStyle={[styles.content, { paddingBottom: spacing.xl + insets.bottom }]}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: spacing.xl + insets.bottom },
+      ]}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={loadSchedules} tintColor={primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => loadSchedules(true)}
+          tintColor={primary}
+        />
       }
     >
-      <WeekDaySelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+      <WeekDaySelector
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+      />
 
       <Text style={styles.sectionTitle}>My Schedule</Text>
       {loading && schedules.length === 0 ? (
@@ -94,7 +117,7 @@ export default function ScheduleScreen() {
       ) : schedules.length === 0 ? (
         <Card>
           <Text style={styles.emptyText}>
-            No schedule for {format(selectedDate, 'MMMM d, yyyy')}.
+            No schedule for {format(selectedDate, "MMMM d, yyyy")}.
           </Text>
         </Card>
       ) : (
@@ -102,12 +125,9 @@ export default function ScheduleScreen() {
           .filter((s) => s.vehicle)
           .map((schedule) => (
             <Card
-              key={
-                schedule.id ||
-                `schedule-${schedule.vehicle?.id}-${dateStr}`
-              }
+              key={schedule.id || `schedule-${schedule.vehicle?.id}-${dateStr}`}
               style={styles.scheduleCard}
-              accessibilityLabel={`Schedule for ${schedule.vehicle?.vehicle_name || 'Unknown vehicle'}, ${format(selectedDate, 'MMMM d, yyyy')}`}
+              accessibilityLabel={`Schedule for ${schedule.vehicle?.vehicle_name || "Unknown vehicle"}, ${format(selectedDate, "MMMM d, yyyy")}`}
               accessibilityRole="summary"
             >
               <View style={styles.vehicleRow}>
@@ -122,7 +142,7 @@ export default function ScheduleScreen() {
                   )}
                 </View>
                 <Text style={styles.vehicleName}>
-                  {schedule.vehicle?.vehicle_name || 'Unknown Vehicle'}
+                  {schedule.vehicle?.vehicle_name || "Unknown Vehicle"}
                 </Text>
               </View>
               <View style={styles.membersBlock}>
@@ -134,7 +154,7 @@ export default function ScheduleScreen() {
                     <Text style={styles.memberName}>
                       {[member.first_name, member.last_name]
                         .filter(Boolean)
-                        .join(' ')}
+                        .join(" ")}
                     </Text>
                   </View>
                 ))}
@@ -147,7 +167,7 @@ export default function ScheduleScreen() {
                     !schedule.notes && styles.notesPlaceholder,
                   ]}
                 >
-                  {schedule.notes || 'No notes'}
+                  {schedule.notes || "No notes"}
                 </Text>
               </View>
             </Card>
@@ -158,13 +178,18 @@ export default function ScheduleScreen() {
         <Button
           variant="accent"
           pill
-          onPress={() => router.push('/(app)/time-off')}
+          onPress={() => router.push("/(app)/time-off")}
           accessibilityLabel="Request time off"
           accessibilityRole="button"
         >
           <View style={styles.ctaBtnContent}>
             <Text style={styles.ctaBtnText}>Request Time Off</Text>
-            <Ionicons name="add" size={20} color={accentForeground} style={styles.ctaBtnIcon} />
+            <Ionicons
+              name="add"
+              size={20}
+              color={accentForeground}
+              style={styles.ctaBtnIcon}
+            />
           </View>
         </Button>
       </View>
@@ -184,12 +209,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: mutedForeground,
-    textAlign: 'center',
+    textAlign: "center",
   },
   scheduleCard: { marginBottom: spacing.base },
   vehicleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
     marginBottom: spacing.md,
   },
@@ -198,22 +223,22 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
-  vehicleImage: { width: '100%', height: '100%' },
+  vehicleImage: { width: "100%", height: "100%" },
   vehicleIconText: { fontSize: 20 },
   vehicleName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: foreground,
     flex: 1,
   },
   membersBlock: { gap: spacing.sm, marginBottom: spacing.md },
   memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
     backgroundColor: muted,
     paddingVertical: 8,
@@ -226,13 +251,13 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   memberIconText: { fontSize: 14 },
   memberName: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: foreground,
   },
   notesBlock: { marginTop: spacing.sm },
@@ -242,16 +267,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   notesText: { fontSize: 14, color: foreground },
-  notesPlaceholder: { color: mutedForeground, fontStyle: 'italic' },
+  notesPlaceholder: { color: mutedForeground, fontStyle: "italic" },
   ctaBtnWrap: { marginTop: spacing.lg },
   ctaBtnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   ctaBtnText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: accentForeground,
   },
   ctaBtnIcon: { marginLeft: 2 },

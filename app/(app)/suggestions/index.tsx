@@ -14,13 +14,14 @@ import {
   success,
   warning,
 } from "@/constants/theme";
+import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
 import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { suggestionsService } from "@/services/suggestions";
 import type { Suggestion } from "@/types/suggestions";
 import { getErrorMessage } from "@/utils/errorMessage";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -55,6 +56,8 @@ export default function SuggestionsScreen() {
   const [items, setItems] = useState<Suggestion[]>([]);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [typeId, setTypeId] = useState("");
   const [title, setTitle] = useState("");
@@ -64,26 +67,35 @@ export default function SuggestionsScreen() {
   const [statusFilter, setStatusFilter] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [listRes, typesRes] = await Promise.all([
-        suggestionsService.list(
-          1,
-          50,
-          debouncedSearch.trim() || undefined,
-          statusFilter || undefined,
-        ),
-        suggestionsService.listTypes(),
-      ]);
-      setItems(listRes?.items ?? []);
-      setTypes(typesRes?.map((t) => ({ id: t.id, name: t.name })) ?? []);
-    } catch (error) {
-      console.error("Failed to load suggestions", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, statusFilter]);
+  const load = useCallback(
+    async (fromPullToRefresh = false) => {
+      try {
+        if (fromPullToRefresh) {
+          setRefreshing(true);
+        } else if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        const [listRes, typesRes] = await Promise.all([
+          suggestionsService.list(
+            1,
+            50,
+            debouncedSearch.trim() || undefined,
+            statusFilter || undefined,
+          ),
+          suggestionsService.listTypes(),
+        ]);
+        setItems(listRes?.items ?? []);
+        setTypes(typesRes?.map((t) => ({ id: t.id, name: t.name })) ?? []);
+        hasLoadedOnce.current = true;
+      } catch (error) {
+        console.error("Failed to load suggestions", error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [debouncedSearch, statusFilter],
+  );
 
   useEffect(() => {
     load();
@@ -109,7 +121,10 @@ export default function SuggestionsScreen() {
       }),
       [],
     ),
+    "/(app)/suggestions",
   );
+
+  useCloseModalOnDrawerOpen(() => setModalOpen(false));
 
   const handleCreate = async () => {
     if (!typeId || !title.trim() || !details.trim()) return;
@@ -146,84 +161,88 @@ export default function SuggestionsScreen() {
     );
   }
 
+  const hasActiveFilters = Boolean(debouncedSearch.trim() || statusFilter);
+  const emptyMessage = hasActiveFilters
+    ? "No suggestions match your filters."
+    : "No suggestions yet.";
+  const emptyAction = !hasActiveFilters
+    ? { label: "New suggestion", onPress: () => setModalOpen(true) }
+    : undefined;
+
   return (
     <>
-      {items.length === 0 ? (
-        <View style={[styles.fill, { paddingBottom: insets.bottom }]}>
-          <EmptyState message="No suggestions yet." />
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(s) => s.id}
-          style={{ backgroundColor: background }}
-          contentContainerStyle={[
-            styles.list,
-            { paddingBottom: spacing.xl + insets.bottom },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={loading}
-              onRefresh={load}
-              tintColor={primary}
+      <FlatList
+        data={items}
+        keyExtractor={(s) => s.id}
+        style={{ backgroundColor: background }}
+        contentContainerStyle={[
+          styles.list,
+          { paddingBottom: spacing.xl + insets.bottom },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => load(true)}
+            tintColor={primary}
+          />
+        }
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search suggestions..."
+              placeholderTextColor={mutedForeground}
             />
-          }
-          ListHeaderComponent={
-            <View style={styles.header}>
-              <TextInput
-                style={styles.searchInput}
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search suggestions..."
-                placeholderTextColor={mutedForeground}
-              />
-              <View style={styles.filterRow}>
-                {STATUS_OPTIONS.map((opt) => (
-                  <Pressable
-                    key={opt.value || "all"}
+            <View style={styles.filterRow}>
+              {STATUS_OPTIONS.map((opt) => (
+                <Pressable
+                  key={opt.value || "all"}
+                  style={[
+                    styles.filterChip,
+                    statusFilter === opt.value && styles.filterChipActive,
+                  ]}
+                  onPress={() => setStatusFilter(opt.value)}
+                >
+                  <Text
                     style={[
-                      styles.filterChip,
-                      statusFilter === opt.value && styles.filterChipActive,
+                      styles.filterChipText,
+                      statusFilter === opt.value && styles.filterChipTextActive,
                     ]}
-                    onPress={() => setStatusFilter(opt.value)}
                   >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        statusFilter === opt.value &&
-                          styles.filterChipTextActive,
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          }
-          renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
-              <ListCard
-                title={item.title}
-                meta={[
-                  `${item.suggestion_type?.name ?? ""} · ${new Date(item.created_at).toLocaleDateString()}`,
-                ]}
-                badge={{
-                  text: item.status,
-                  backgroundColor: STATUS_COLORS[item.status] ?? "#94a3b8",
-                }}
-                onPress={() => router.push(`/(app)/suggestions/${item.id}`)}
-              >
-                {item.details ? (
-                  <Text style={styles.details} numberOfLines={2}>
-                    {item.details}
+                    {opt.label}
                   </Text>
-                ) : null}
-              </ListCard>
+                </Pressable>
+              ))}
             </View>
-          )}
-        />
-      )}
+          </View>
+        }
+        ListEmptyComponent={
+          <EmptyState message={emptyMessage} action={emptyAction} />
+        }
+        renderItem={({ item }) => (
+          <View style={styles.cardWrap}>
+            <ListCard
+              title={item.title}
+              meta={[
+                `${item.suggestion_type?.name ?? ""} · ${new Date(item.created_at).toLocaleDateString()}`,
+              ]}
+              badge={{
+                text: item.status,
+                backgroundColor: STATUS_COLORS[item.status] ?? "#94a3b8",
+              }}
+              onPress={() => router.push(`/(app)/suggestions/${item.id}`)}
+            >
+              {item.details ? (
+                <Text style={styles.details} numberOfLines={2}>
+                  {item.details}
+                </Text>
+              ) : null}
+            </ListCard>
+          </View>
+        )}
+      />
       <FormModal
         visible={modalOpen}
         onClose={() => setModalOpen(false)}

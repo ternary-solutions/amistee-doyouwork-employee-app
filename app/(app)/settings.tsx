@@ -11,18 +11,19 @@ import {
     radius,
     spacing,
     typography,
-} from '@/constants/theme';
-import { preferencesService } from '@/services/preferences';
-import { usersService } from '@/services/users';
-import { useMainStore } from '@/store/main';
-import type { Preference } from '@/types/preferences';
-import { getMediaSource, logout } from '@/utils/api';
-import { toast as showToast } from '@/utils/toast';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+} from "@/constants/theme";
+import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { preferencesService } from "@/services/preferences";
+import { usersService } from "@/services/users";
+import { useMainStore } from "@/store/main";
+import type { Preference } from "@/types/preferences";
+import { getMediaSource, logout } from "@/utils/api";
+import { toast as showToast } from "@/utils/toast";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -37,16 +38,16 @@ import {
     Text,
     TextInput,
     View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
+  if (!dateStr) return "";
   try {
     return new Date(dateStr).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   } catch {
     return dateStr;
@@ -60,11 +61,10 @@ export default function SettingsScreen() {
   const setMe = useMainStore((state) => state.setMe);
 
   useSetHeaderOptions(
-    useMemo(
-      () => ({ title: 'Settings', showBack: false }),
-      [],
-    ),
+    useMemo(() => ({ title: "Settings", showBack: false }), []),
   );
+
+  useCloseModalOnDrawerOpen(() => setEditModalOpen(false));
 
   const [preferences, setPreferences] = useState<Preference | null>(null);
   const [loadingPrefs, setLoadingPrefs] = useState(true);
@@ -74,14 +74,14 @@ export default function SettingsScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Edit form state
-  const [editFirst, setEditFirst] = useState('');
-  const [editLast, setEditLast] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editDob, setEditDob] = useState('');
-  const [editEmergencyName, setEditEmergencyName] = useState('');
-  const [editEmergencyPhone, setEditEmergencyPhone] = useState('');
-  const [editAddress, setEditAddress] = useState('');
+  const [editFirst, setEditFirst] = useState("");
+  const [editLast, setEditLast] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editDob, setEditDob] = useState("");
+  const [editEmergencyName, setEditEmergencyName] = useState("");
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
   const [showDobPicker, setShowDobPicker] = useState(false);
 
   const loadPreferences = useCallback(async () => {
@@ -90,7 +90,7 @@ export default function SettingsScreen() {
       const prefs = await preferencesService.load();
       setPreferences(prefs);
     } catch (error) {
-      console.error('Failed to load preferences', error);
+      console.error("Failed to load preferences", error);
     } finally {
       setLoadingPrefs(false);
     }
@@ -102,14 +102,14 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     if (me && editModalOpen) {
-      setEditFirst(me.first_name || '');
-      setEditLast(me.last_name || '');
-      setEditPhone(me.phone_number || '');
-      setEditEmail(me.email || '');
-      setEditDob(me.date_of_birth || '');
-      setEditEmergencyName(me.emergency_contact_name || '');
-      setEditEmergencyPhone(me.emergency_contact_phone || '');
-      setEditAddress(me.address || '');
+      setEditFirst(me.first_name || "");
+      setEditLast(me.last_name || "");
+      setEditPhone(me.phone_number || "");
+      setEditEmail(me.email || "");
+      setEditDob(me.date_of_birth || "");
+      setEditEmergencyName(me.emergency_contact_name || "");
+      setEditEmergencyPhone(me.emergency_contact_phone || "");
+      setEditAddress(me.address || "");
     }
   }, [me, editModalOpen]);
 
@@ -126,10 +126,10 @@ export default function SettingsScreen() {
         expense_updates: preferences.expense_updates,
         spiff_notifications: preferences.spiff_notifications,
       });
-      showToast.success('Preferences saved.');
+      showToast.success("Preferences saved.");
     } catch (error) {
-      console.error('Failed to save preferences', error);
-      Alert.alert('Error', 'Failed to save preferences. Please try again.');
+      console.error("Failed to save preferences", error);
+      Alert.alert("Error", "Failed to save preferences. Please try again.");
     } finally {
       setSavingPrefs(false);
     }
@@ -138,26 +138,26 @@ export default function SettingsScreen() {
   const handlePrefToggle = useCallback(
     (
       key:
-        | 'job_updates'
-        | 'company_announcements'
-        | 'weekend_overtime_alerts'
-        | 'job_reminders'
-        | 'expense_updates'
-        | 'spiff_notifications',
-      value: boolean
+        | "job_updates"
+        | "company_announcements"
+        | "weekend_overtime_alerts"
+        | "job_reminders"
+        | "expense_updates"
+        | "spiff_notifications",
+      value: boolean,
     ) => {
       if (!preferences) return;
       setPreferences({ ...preferences, [key]: value });
     },
-    [preferences]
+    [preferences],
   );
 
   const handleDeliveryMethodChange = useCallback(
-    (value: 'in_app' | 'in_app_email' | 'in_app_email_sms') => {
+    (value: "in_app" | "in_app_email" | "in_app_email_sms") => {
       if (!preferences) return;
       setPreferences({ ...preferences, delivery_method: value });
     },
-    [preferences]
+    [preferences],
   );
 
   const handleSaveEdit = useCallback(async () => {
@@ -177,8 +177,8 @@ export default function SettingsScreen() {
       setMe(updated);
       setEditModalOpen(false);
     } catch (error) {
-      console.error('Failed to update profile', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
+      console.error("Failed to update profile", error);
+      Alert.alert("Error", "Failed to update profile. Please try again.");
     } finally {
       setEditSaving(false);
     }
@@ -198,12 +198,13 @@ export default function SettingsScreen() {
   const handleChangePhoto = useCallback(async () => {
     if (!me?.id) return;
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
         Alert.alert(
-          'Permission Required',
-          'Please allow access to your photo library to change your profile photo.',
-          [{ text: 'OK' }]
+          "Permission Required",
+          "Please allow access to your photo library to change your profile photo.",
+          [{ text: "OK" }],
         );
         return;
       }
@@ -216,22 +217,22 @@ export default function SettingsScreen() {
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
       const uri = asset.uri;
-      const filename = uri.split('/').pop() || 'photo.jpg';
+      const filename = uri.split("/").pop() || "photo.jpg";
       const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const type = match ? `image/${match[1]}` : "image/jpeg";
       const formData = new FormData();
-      formData.append('photo', {
-        uri: Platform.OS === 'web' ? uri : uri,
+      formData.append("photo", {
+        uri: Platform.OS === "web" ? uri : uri,
         type,
         name: filename,
       } as unknown as Blob);
       setUploadingPhoto(true);
       const updatedUser = await usersService.updatePhoto(me.id, formData);
       setMe(updatedUser);
-      showToast.success('Profile photo updated successfully.');
+      showToast.success("Profile photo updated successfully.");
     } catch (error) {
-      console.error('Failed to upload photo', error);
-      Alert.alert('Error', 'Failed to upload photo. Please try again.');
+      console.error("Failed to upload photo", error);
+      Alert.alert("Error", "Failed to upload photo. Please try again.");
     } finally {
       setUploadingPhoto(false);
     }
@@ -239,16 +240,24 @@ export default function SettingsScreen() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/(auth)/login');
+    router.replace("/(auth)/login");
   };
 
-  const fullName = me ? [me.first_name, me.last_name].filter(Boolean).join(' ') : '';
-  const emergencyValues = [me?.emergency_contact_name, me?.emergency_contact_phone].filter(Boolean) as string[];
+  const fullName = me
+    ? [me.first_name, me.last_name].filter(Boolean).join(" ")
+    : "";
+  const emergencyValues = [
+    me?.emergency_contact_name,
+    me?.emergency_contact_phone,
+  ].filter(Boolean) as string[];
 
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: background }]}
-      contentContainerStyle={[styles.content, { paddingBottom: spacing.xl + insets.bottom }]}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: spacing.xl + insets.bottom },
+      ]}
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.title}>My Account</Text>
@@ -259,23 +268,33 @@ export default function SettingsScreen() {
         <View style={styles.photoRow}>
           <View style={styles.avatarWrap}>
             {me?.photo_url ? (
-              <Image source={getMediaSource(me.photo_url)} style={styles.avatar} />
+              <Image
+                source={getMediaSource(me.photo_url)}
+                style={styles.avatar}
+              />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarPlaceholderText}>
-                  {me?.first_name?.[0] ?? '?'}
+                  {me?.first_name?.[0] ?? "?"}
                 </Text>
               </View>
             )}
           </View>
           <View style={styles.photoActions}>
             <Pressable
-              style={[styles.outlineBtn, uploadingPhoto && styles.outlineBtnDisabled]}
+              style={[
+                styles.outlineBtn,
+                uploadingPhoto && styles.outlineBtnDisabled,
+              ]}
               onPress={handleChangePhoto}
               disabled={uploadingPhoto}
             >
               <Text style={styles.outlineBtnText}>
-                {uploadingPhoto ? 'Uploading...' : me?.photo_url ? 'Change Photo' : 'Upload Photo'}
+                {uploadingPhoto
+                  ? "Uploading..."
+                  : me?.photo_url
+                    ? "Change Photo"
+                    : "Upload Photo"}
               </Text>
             </Pressable>
             <Text style={styles.photoHint}>JPG, PNG or WebP. Max 5MB.</Text>
@@ -292,82 +311,106 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
         <InfoRow label="Full Name" value={fullName} />
-        <InfoRow label="Phone Number" value={me?.phone_number ?? ''} />
-        <InfoRow label="Email Address" value={me?.email ?? ''} optional />
+        <InfoRow label="Phone Number" value={me?.phone_number ?? ""} />
+        <InfoRow label="Email Address" value={me?.email ?? ""} optional />
         <InfoRow label="Date of Birth" value={formatDate(me?.date_of_birth)} />
-        <InfoRow label="Emergency Contact" value={emergencyValues.join(' · ')} />
-        <InfoRow label="Home Address" value={me?.address ?? ''} last />
+        <InfoRow
+          label="Emergency Contact"
+          value={emergencyValues.join(" · ")}
+        />
+        <InfoRow label="Home Address" value={me?.address ?? ""} last />
       </View>
 
       {/* Notification preferences */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Notifications</Text>
-        <Text style={styles.sectionDesc}>Manage your notification preferences</Text>
+        <Text style={styles.sectionDesc}>
+          Manage your notification preferences
+        </Text>
         {loadingPrefs ? (
-          <ActivityIndicator size="small" color={foreground} style={styles.prefLoader} />
+          <ActivityIndicator
+            size="small"
+            color={foreground}
+            style={styles.prefLoader}
+          />
         ) : preferences ? (
           <>
             <ToggleRow
               label="Job Updates"
               value={preferences.job_updates}
-              onValueChange={(v) => handlePrefToggle('job_updates', v)}
+              onValueChange={(v) => handlePrefToggle("job_updates", v)}
             />
             <ToggleRow
               label="Company Announcements"
               value={preferences.company_announcements}
-              onValueChange={(v) => handlePrefToggle('company_announcements', v)}
+              onValueChange={(v) =>
+                handlePrefToggle("company_announcements", v)
+              }
             />
             <ToggleRow
               label="Weekend Overtime Alerts"
               value={preferences.weekend_overtime_alerts}
-              onValueChange={(v) => handlePrefToggle('weekend_overtime_alerts', v)}
+              onValueChange={(v) =>
+                handlePrefToggle("weekend_overtime_alerts", v)
+              }
             />
             <ToggleRow
               label="Job Reminders"
               value={preferences.job_reminders}
-              onValueChange={(v) => handlePrefToggle('job_reminders', v)}
+              onValueChange={(v) => handlePrefToggle("job_reminders", v)}
             />
             <ToggleRow
               label="Expense Updates"
               value={preferences.expense_updates}
-              onValueChange={(v) => handlePrefToggle('expense_updates', v)}
+              onValueChange={(v) => handlePrefToggle("expense_updates", v)}
             />
             <ToggleRow
               label="Spiff Notifications"
               value={preferences.spiff_notifications}
-              onValueChange={(v) => handlePrefToggle('spiff_notifications', v)}
+              onValueChange={(v) => handlePrefToggle("spiff_notifications", v)}
             />
             <View style={styles.deliveryMethodRow}>
               <Text style={styles.toggleLabel}>Delivery Method</Text>
               <View style={styles.deliveryMethodOptions}>
-                {(['in_app', 'in_app_email', 'in_app_email_sms'] as const).map((opt) => (
-                  <Pressable
-                    key={opt}
-                    style={[
-                      styles.deliveryOption,
-                      preferences.delivery_method === opt && styles.deliveryOptionActive,
-                    ]}
-                    onPress={() => handleDeliveryMethodChange(opt)}
-                  >
-                    <Text
+                {(["in_app", "in_app_email", "in_app_email_sms"] as const).map(
+                  (opt) => (
+                    <Pressable
+                      key={opt}
                       style={[
-                        styles.deliveryOptionText,
-                        preferences.delivery_method === opt && styles.deliveryOptionTextActive,
+                        styles.deliveryOption,
+                        preferences.delivery_method === opt &&
+                          styles.deliveryOptionActive,
                       ]}
+                      onPress={() => handleDeliveryMethodChange(opt)}
                     >
-                      {opt === 'in_app' ? 'In App' : opt === 'in_app_email' ? 'In App + Email' : 'In App + Email + SMS'}
-                    </Text>
-                  </Pressable>
-                ))}
+                      <Text
+                        style={[
+                          styles.deliveryOptionText,
+                          preferences.delivery_method === opt &&
+                            styles.deliveryOptionTextActive,
+                        ]}
+                      >
+                        {opt === "in_app"
+                          ? "In App"
+                          : opt === "in_app_email"
+                            ? "In App + Email"
+                            : "In App + Email + SMS"}
+                      </Text>
+                    </Pressable>
+                  ),
+                )}
               </View>
             </View>
             <Pressable
-              style={[styles.savePrefsBtn, savingPrefs && styles.savePrefsBtnDisabled]}
+              style={[
+                styles.savePrefsBtn,
+                savingPrefs && styles.savePrefsBtnDisabled,
+              ]}
               onPress={handleSavePreferences}
               disabled={savingPrefs}
             >
               <Text style={styles.savePrefsBtnText}>
-                {savingPrefs ? 'Saving...' : 'Save preferences'}
+                {savingPrefs ? "Saving..." : "Save preferences"}
               </Text>
             </Pressable>
           </>
@@ -377,14 +420,24 @@ export default function SettingsScreen() {
       {/* Security */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Security</Text>
-        <Text style={styles.sectionDesc}>Manage your password and security settings</Text>
-        <Pressable style={styles.outlineBtn} onPress={() => router.push('/(auth)/forgot-password')}>
+        <Text style={styles.sectionDesc}>
+          Manage your password and security settings
+        </Text>
+        <Pressable
+          style={styles.outlineBtn}
+          onPress={() => router.push("/(auth)/forgot-password")}
+        >
           <Text style={styles.outlineBtnText}>Change Password</Text>
         </Pressable>
       </View>
 
       {/* Sign out */}
-      <Pressable style={styles.logoutBtn} onPress={handleLogout} accessibilityLabel="Log out" accessibilityRole="button">
+      <Pressable
+        style={styles.logoutBtn}
+        onPress={handleLogout}
+        accessibilityLabel="Log out"
+        accessibilityRole="button"
+      >
         <Text style={styles.logoutBtnText}>Sign Out</Text>
       </Pressable>
 
@@ -392,11 +445,14 @@ export default function SettingsScreen() {
       <Modal visible={editModalOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={styles.modalContent}
           >
             <Text style={styles.modalTitle}>Edit Personal Information</Text>
-            <ScrollView keyboardShouldPersistTaps="handled" style={styles.modalScroll}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              style={styles.modalScroll}
+            >
               <Text style={styles.label}>First name</Text>
               <TextInput
                 style={styles.input}
@@ -433,19 +489,29 @@ export default function SettingsScreen() {
                 style={styles.dateBtn}
                 onPress={() => setShowDobPicker(true)}
               >
-                <Text style={[styles.dateBtnText, !editDob && styles.dateBtnPlaceholder]}>
-                  {editDob ? formatDate(editDob) : 'Select date'}
+                <Text
+                  style={[
+                    styles.dateBtnText,
+                    !editDob && styles.dateBtnPlaceholder,
+                  ]}
+                >
+                  {editDob ? formatDate(editDob) : "Select date"}
                 </Text>
               </Pressable>
               {showDobPicker && (
                 <DateTimePicker
-                  value={editDob ? new Date(editDob + 'T12:00:00') : new Date('2000-01-01')}
+                  value={
+                    editDob
+                      ? new Date(editDob + "T12:00:00")
+                      : new Date("2000-01-01")
+                  }
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
                   maximumDate={new Date()}
                   onChange={(_, selectedDate) => {
-                    setShowDobPicker(Platform.OS === 'ios');
-                    if (selectedDate) setEditDob(selectedDate.toISOString().slice(0, 10));
+                    setShowDobPicker(Platform.OS === "ios");
+                    if (selectedDate)
+                      setEditDob(selectedDate.toISOString().slice(0, 10));
                   }}
                 />
               )}
@@ -474,15 +540,23 @@ export default function SettingsScreen() {
               />
             </ScrollView>
             <View style={styles.modalActions}>
-              <Pressable style={styles.cancelBtn} onPress={() => setEditModalOpen(false)}>
+              <Pressable
+                style={styles.cancelBtn}
+                onPress={() => setEditModalOpen(false)}
+              >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </Pressable>
               <Pressable
-                style={[styles.submitBtn, editSaving && styles.submitBtnDisabled]}
+                style={[
+                  styles.submitBtn,
+                  editSaving && styles.submitBtnDisabled,
+                ]}
                 onPress={handleSaveEdit}
                 disabled={editSaving}
               >
-                <Text style={styles.submitBtnText}>{editSaving ? 'Saving...' : 'Save'}</Text>
+                <Text style={styles.submitBtnText}>
+                  {editSaving ? "Saving..." : "Save"}
+                </Text>
               </Pressable>
             </View>
           </KeyboardAvoidingView>
@@ -507,7 +581,9 @@ function InfoRow({
   return (
     <View style={[styles.infoRow, last && styles.infoRowLast]}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue} numberOfLines={3}>{value || '—'}</Text>
+      <Text style={styles.infoValue} numberOfLines={3}>
+        {value || "—"}
+      </Text>
     </View>
   );
 }
@@ -532,8 +608,16 @@ function ToggleRow({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.base },
-  title: { ...typography.sectionTitle, color: foreground, marginBottom: spacing.sm },
-  subtitle: { fontSize: 14, color: mutedForeground, marginBottom: spacing.base },
+  title: {
+    ...typography.sectionTitle,
+    color: foreground,
+    marginBottom: spacing.sm,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: mutedForeground,
+    marginBottom: spacing.base,
+  },
   card: {
     backgroundColor: card,
     borderRadius: radius.base,
@@ -542,17 +626,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: border,
   },
-  photoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
-  avatarWrap: { width: 80, height: 80, borderRadius: 40, overflow: 'hidden' },
-  avatar: { width: '100%', height: '100%' },
+  photoRow: { flexDirection: "row", alignItems: "center", gap: spacing.base },
+  avatarWrap: { width: 80, height: 80, borderRadius: 40, overflow: "hidden" },
+  avatar: { width: "100%", height: "100%" },
   avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     backgroundColor: border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  avatarPlaceholderText: { fontSize: 28, fontWeight: '600', color: mutedForeground },
+  avatarPlaceholderText: {
+    fontSize: 28,
+    fontWeight: "600",
+    color: mutedForeground,
+  },
   photoActions: { flex: 1 },
   outlineBtn: {
     paddingVertical: 10,
@@ -560,75 +648,143 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: border,
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
   },
   outlineBtnDisabled: { opacity: 0.6 },
-  outlineBtnText: { fontSize: 14, fontWeight: '600', color: foreground },
+  outlineBtnText: { fontSize: 14, fontWeight: "600", color: foreground },
   photoHint: { fontSize: 12, color: mutedForeground, marginTop: spacing.xs },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  sectionTitle: { ...typography.title, color: foreground, marginBottom: spacing.sm },
-  editLink: { fontSize: 14, fontWeight: '600', color: primary },
-  sectionDesc: { fontSize: 13, color: mutedForeground, marginBottom: spacing.md },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.title,
+    color: foreground,
+    marginBottom: spacing.sm,
+  },
+  editLink: { fontSize: 14, fontWeight: "600", color: primary },
+  sectionDesc: {
+    fontSize: 13,
+    color: mutedForeground,
+    marginBottom: spacing.md,
+  },
   infoRow: {
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: border,
   },
   infoRowLast: { borderBottomWidth: 0 },
-  infoLabel: { fontSize: 12, fontWeight: '500', color: mutedForeground, marginBottom: 2, textTransform: 'uppercase' },
+  infoLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: mutedForeground,
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
   infoValue: { fontSize: 14, color: foreground },
   prefLoader: { marginVertical: spacing.sm },
-  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
+  toggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: spacing.sm,
+  },
   toggleLabel: { fontSize: 14, color: foreground, flex: 1 },
   deliveryMethodRow: { paddingVertical: spacing.sm, marginTop: spacing.xs },
-  deliveryMethodOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 6 },
+  deliveryMethodOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: 6,
+  },
   deliveryOption: {
     paddingHorizontal: spacing.base,
     paddingVertical: 8,
     borderRadius: radius.full,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: "#e2e8f0",
     borderWidth: 1,
     borderColor: border,
   },
   deliveryOptionActive: { backgroundColor: primary, borderColor: primary },
   deliveryOptionText: { fontSize: 13, color: foreground },
-  deliveryOptionTextActive: { color: primaryForeground, fontWeight: '600' },
+  deliveryOptionTextActive: { color: primaryForeground, fontWeight: "600" },
   savePrefsBtn: {
     marginTop: spacing.sm,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: radius.sm,
     backgroundColor: primary,
   },
   savePrefsBtnDisabled: { opacity: 0.6 },
-  savePrefsBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  savePrefsBtnText: { fontSize: 16, fontWeight: "600", color: "#fff" },
   logoutBtn: {
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: radius.sm,
     backgroundColor: destructiveMuted,
   },
-  logoutBtnText: { fontSize: 16, fontWeight: '600', color: destructive },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  logoutBtnText: { fontSize: 16, fontWeight: "600", color: destructive },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
   modalContent: {
     backgroundColor: card,
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
     padding: spacing.lg,
-    maxHeight: '85%',
+    maxHeight: "85%",
   },
   modalTitle: { ...typography.sectionTitle, marginBottom: spacing.lg },
   modalScroll: { maxHeight: 400 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 4, color: foreground },
-  dateBtn: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base },
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 4,
+    color: foreground,
+  },
+  dateBtn: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+  },
   dateBtnText: { fontSize: 16, color: foreground },
   dateBtnPlaceholder: { color: mutedForeground },
-  input: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base, fontSize: 16 },
-  inputMultiline: { minHeight: 60, textAlignVertical: 'top' },
-  modalActions: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.base },
-  cancelBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: radius.sm, borderWidth: 1, borderColor: border },
-  cancelBtnText: { fontSize: 16, fontWeight: '500', color: foreground },
-  submitBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: radius.sm, backgroundColor: primary },
+  input: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+    fontSize: 16,
+  },
+  inputMultiline: { minHeight: 60, textAlignVertical: "top" },
+  modalActions: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginTop: spacing.base,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: border,
+  },
+  cancelBtnText: { fontSize: 16, fontWeight: "500", color: foreground },
+  submitBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderRadius: radius.sm,
+    backgroundColor: primary,
+  },
   submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: { fontSize: 16, fontWeight: '600', color: primaryForeground },
+  submitBtnText: { fontSize: 16, fontWeight: "600", color: primaryForeground },
 });

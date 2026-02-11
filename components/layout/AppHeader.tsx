@@ -1,9 +1,10 @@
 import { primary, primaryDark, primaryForeground } from "@/constants/theme";
+import { useDrawerModalContext } from "@/contexts/DrawerModalContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useMainStore } from "@/store/main";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { usePathname, useRouter } from "expo-router";
+import { type Href, usePathname, useRouter } from "expo-router";
 import {
   Pressable,
   Image as RNImage,
@@ -77,8 +78,10 @@ export function AppHeader({
 
   const canGoBack = navigation.canGoBack();
   const showBack = typeof showBackProp === "boolean" ? showBackProp : canGoBack;
+  const drawerModal = useDrawerModalContext();
 
   const openDrawer = () => {
+    drawerModal?.closeModalsBeforeDrawer();
     const drawer =
       "getParent" in navigation
         ? (
@@ -104,7 +107,7 @@ export function AppHeader({
     if (showBack) {
       const parent = getParentPath(pathname);
       if (parent) {
-        router.replace(parent as `/(app)/${string}`);
+        router.replace(parent as Href);
         return;
       }
     }

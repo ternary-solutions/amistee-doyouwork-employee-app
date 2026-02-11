@@ -1,25 +1,27 @@
 import {
-  background,
-  foreground,
-  mutedForeground,
-  primary,
-  radius,
-  spacing,
-  typography,
-  destructive,
-} from '@/constants/theme';
-import { usersService } from '@/services/users';
-import type { User } from '@/types/users';
-import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+    background,
+    destructive,
+    foreground,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    spacing,
+    typography
+} from "@/constants/theme";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { usersService } from "@/services/users";
+import type { User } from "@/types/users";
+import { getMediaSource } from "@/utils/api";
+import { useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from "react-native";
 
 export default function ContactDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,7 +35,7 @@ export default function ContactDetailScreen() {
       const data = await usersService.getById(id);
       setUser(data);
     } catch (error) {
-      console.error('Failed to load contact', error);
+      console.error("Failed to load contact", error);
     } finally {
       setLoading(false);
     }
@@ -44,10 +46,7 @@ export default function ContactDetailScreen() {
   }, [load]);
 
   useSetHeaderOptions(
-    useMemo(
-      () => ({ title: 'Contact', showBack: true }),
-      []
-    )
+    useMemo(() => ({ title: "Contact", showBack: true }), []),
   );
 
   if (loading) {
@@ -66,11 +65,27 @@ export default function ContactDetailScreen() {
     );
   }
 
-  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ");
+  const initial = fullName.trim()[0]?.toUpperCase() ?? "?";
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: background }]} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>{fullName}</Text>
+    <ScrollView
+      style={[styles.container, { backgroundColor: background }]}
+      contentContainerStyle={styles.content}
+    >
+      <View style={styles.profileHeader}>
+        {user.photo_url ? (
+          <Image
+            source={getMediaSource(user.photo_url)}
+            style={styles.avatar}
+          />
+        ) : (
+          <View style={styles.avatarFallback}>
+            <Text style={styles.avatarInitial}>{initial}</Text>
+          </View>
+        )}
+        <Text style={styles.title}>{fullName}</Text>
+      </View>
       <View style={styles.row}>
         <Text style={styles.label}>Email</Text>
         <Text style={styles.value}>{user.email}</Text>
@@ -96,8 +111,37 @@ export default function ContactDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: spacing.base, paddingBottom: spacing.xl },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  title: { ...typography.sectionTitle, fontSize: 22, color: foreground, marginBottom: spacing.base },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+  profileHeader: {
+    alignItems: "center",
+    marginBottom: spacing.lg,
+  },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    marginBottom: spacing.md,
+  },
+  avatarFallback: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: mutedForeground,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+  avatarInitial: {
+    fontSize: 36,
+    fontWeight: "600",
+    color: primaryForeground,
+  },
+  title: {
+    ...typography.sectionTitle,
+    fontSize: 22,
+    color: foreground,
+    textAlign: "center",
+  },
   row: { marginBottom: spacing.base },
   label: { ...typography.label, color: mutedForeground, marginBottom: 4 },
   value: { fontSize: 16, color: foreground },

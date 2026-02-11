@@ -24,7 +24,7 @@ import { getMediaSource } from "@/utils/mediaSource";
 import { Ionicons } from "@expo/vector-icons";
 import { format } from "date-fns";
 import { useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -41,6 +41,8 @@ export default function DashboardScreen() {
   const me = useMainStore((s) => s.me);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [schedules, setSchedules] = useState<MyScheduleResponse[]>([]);
   const dateStr = format(selectedDate, "yyyy-MM-dd");
 
@@ -49,21 +51,30 @@ export default function DashboardScreen() {
     if (typeof nav.openDrawer === "function") nav.openDrawer();
   };
 
-  const loadSchedules = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await scheduleService.getMySchedule(dateStr);
-      setSchedules(res.filter((s) => s && s.vehicle !== undefined));
-    } catch (error) {
-      console.error("Failed to load schedules", error);
-      Alert.alert(
-        "Error",
-        getErrorMessage(error, "Failed to load schedule. Please try again."),
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [dateStr]);
+  const loadSchedules = useCallback(
+    async (fromPullToRefresh = false) => {
+      try {
+        if (fromPullToRefresh) {
+          setRefreshing(true);
+        } else if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        const res = await scheduleService.getMySchedule(dateStr);
+        setSchedules(res.filter((s) => s && s.vehicle !== undefined));
+        hasLoadedOnce.current = true;
+      } catch (error) {
+        console.error("Failed to load schedules", error);
+        Alert.alert(
+          "Error",
+          getErrorMessage(error, "Failed to load schedule. Please try again."),
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [dateStr],
+  );
 
   useEffect(() => {
     if (!me) return;
@@ -79,8 +90,8 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
-            onRefresh={loadSchedules}
+            refreshing={refreshing}
+            onRefresh={() => loadSchedules(true)}
             tintColor={accent}
           />
         }

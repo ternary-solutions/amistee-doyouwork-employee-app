@@ -1,35 +1,35 @@
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ListCard } from "@/components/ui/ListCard";
+import { SkeletonListCard } from "@/components/ui/Skeleton";
 import {
-  background,
-  border,
-  foreground,
-  mutedForeground,
-  primary,
-  radius,
-  spacing,
-} from '@/constants/theme';
-import { partnerCompaniesService } from '@/services/partnerCompanies';
-import type { PartnerCompany } from '@/types/partnerCompanies';
-import * as Clipboard from 'expo-clipboard';
-import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
-import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+    background,
+    border,
+    foreground,
+    mutedForeground,
+    primary,
+    radius,
+    spacing,
+} from "@/constants/theme";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { partnerCompaniesService } from "@/services/partnerCompanies";
+import type { PartnerCompany } from "@/types/partnerCompanies";
+import { getErrorMessage } from "@/utils/errorMessage";
+import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ListCard } from '@/components/ui/ListCard';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonListCard } from '@/components/ui/Skeleton';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { getErrorMessage } from '@/utils/errorMessage';
-import { Alert } from 'react-native';
+    Alert,
+    FlatList,
+    Pressable,
+    RefreshControl,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function getPartnerMessage(item: PartnerCompany): string {
   const parts = [
@@ -39,50 +39,64 @@ function getPartnerMessage(item: PartnerCompany): string {
     item.email,
     item.details,
   ].filter(Boolean);
-  return parts.join(' • ');
+  return parts.join(" • ");
 }
 
 export default function ReferralsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<PartnerCompany[]>([]);
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
   useSetHeaderOptions(
-    useMemo(
-      () => ({ title: 'Partner Companies', showBack: false }),
-      [],
-    ),
+    useMemo(() => ({ title: "Partner Companies", showBack: false }), []),
+    "/(app)/referrals",
   );
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [listRes, catRes] = await Promise.all([
-        partnerCompaniesService.list(
-          1,
-          50,
-          debouncedSearch || undefined,
-          categoryFilter || undefined
-        ),
-        partnerCompaniesService.listCategories().catch(() => []),
-      ]);
-      setItems(listRes?.items ?? []);
-      setCategories(catRes?.map((c) => ({ id: c.id, name: c.name })) ?? []);
-    } catch (error) {
-      console.error('Failed to load partner companies', error);
-      Alert.alert(
-        'Error',
-        getErrorMessage(error, 'Failed to load partner companies. Please try again.')
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedSearch, categoryFilter]);
+  const load = useCallback(
+    async (fromPullToRefresh = false) => {
+      try {
+        if (fromPullToRefresh) {
+          setRefreshing(true);
+        } else if (!hasLoadedOnce.current) {
+          setLoading(true);
+        }
+        const [listRes, catRes] = await Promise.all([
+          partnerCompaniesService.list(
+            1,
+            50,
+            debouncedSearch || undefined,
+            categoryFilter || undefined,
+          ),
+          partnerCompaniesService.listCategories().catch(() => []),
+        ]);
+        setItems(listRes?.items ?? []);
+        setCategories(catRes?.map((c) => ({ id: c.id, name: c.name })) ?? []);
+        hasLoadedOnce.current = true;
+      } catch (error) {
+        console.error("Failed to load partner companies", error);
+        Alert.alert(
+          "Error",
+          getErrorMessage(
+            error,
+            "Failed to load partner companies. Please try again.",
+          ),
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [debouncedSearch, categoryFilter],
+  );
 
   useEffect(() => {
     load();
@@ -90,7 +104,7 @@ export default function ReferralsScreen() {
 
   const sharePartner = useCallback((item: PartnerCompany) => {
     const message = getPartnerMessage(item);
-    Share.share({ message, title: 'Partner company details' }).catch(() => {});
+    Share.share({ message, title: "Partner company details" }).catch(() => {});
   }, []);
 
   const copyPartner = useCallback(async (item: PartnerCompany) => {
@@ -114,17 +128,27 @@ export default function ReferralsScreen() {
           <View style={styles.chipsRow}>
             <Pressable
               style={[styles.chip, !categoryFilter && styles.chipActive]}
-              onPress={() => setCategoryFilter('')}
+              onPress={() => setCategoryFilter("")}
             >
-              <Text style={[styles.chipText, !categoryFilter && styles.chipTextActive]}>
+              <Text
+                style={[
+                  styles.chipText,
+                  !categoryFilter && styles.chipTextActive,
+                ]}
+              >
                 All
               </Text>
             </Pressable>
             {categories.map((c) => (
               <Pressable
                 key={c.id}
-                style={[styles.chip, categoryFilter === c.name && styles.chipActive]}
-                onPress={() => setCategoryFilter(categoryFilter === c.name ? '' : c.name)}
+                style={[
+                  styles.chip,
+                  categoryFilter === c.name && styles.chipActive,
+                ]}
+                onPress={() =>
+                  setCategoryFilter(categoryFilter === c.name ? "" : c.name)
+                }
               >
                 <Text
                   style={[
@@ -144,9 +168,19 @@ export default function ReferralsScreen() {
 
   if (loading && items.length === 0) {
     return (
-      <View style={[styles.skeletonContainer, { paddingBottom: spacing.xl + insets.bottom }]}>
+      <View
+        style={[
+          styles.skeletonContainer,
+          { paddingBottom: spacing.xl + insets.bottom },
+        ]}
+      >
         <View style={styles.header}>
-          <View style={[styles.searchInput, { height: 44, backgroundColor: border }]} />
+          <View
+            style={[
+              styles.searchInput,
+              { height: 44, backgroundColor: border },
+            ]}
+          />
         </View>
         <View style={styles.skeletonWrap}>
           <SkeletonListCard />
@@ -165,7 +199,10 @@ export default function ReferralsScreen() {
       keyExtractor={(p) => p.id}
       style={{ backgroundColor: background }}
       ListHeaderComponent={renderHeader}
-      contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
+      contentContainerStyle={[
+        styles.list,
+        { paddingBottom: spacing.xl + insets.bottom },
+      ]}
       ListEmptyComponent={
         <EmptyState
           message="No partner companies found."
@@ -173,7 +210,11 @@ export default function ReferralsScreen() {
         />
       }
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => load(true)}
+          tintColor={primary}
+        />
       }
       renderItem={({ item }) => (
         <View style={styles.cardWrap}>
@@ -182,7 +223,7 @@ export default function ReferralsScreen() {
             meta={[
               [item.category?.name, item.phone_number, item.location]
                 .filter(Boolean)
-                .join(' · ') || '—',
+                .join(" · ") || "—",
             ]}
             onPress={() => router.push(`/(app)/referrals/${item.id}`)}
           >
@@ -193,7 +234,10 @@ export default function ReferralsScreen() {
             ) : null}
             <View style={styles.actionRow}>
               <Pressable
-                style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  pressed && { opacity: 0.8 },
+                ]}
                 onPress={() => sharePartner(item)}
                 accessibilityLabel="Share partner details"
                 accessibilityRole="button"
@@ -201,7 +245,10 @@ export default function ReferralsScreen() {
                 <Text style={styles.actionBtnText}>Share</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [styles.actionBtn, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  pressed && { opacity: 0.8 },
+                ]}
                 onPress={() => copyPartner(item)}
                 accessibilityLabel="Copy partner details"
                 accessibilityRole="button"
@@ -219,7 +266,11 @@ export default function ReferralsScreen() {
 const styles = StyleSheet.create({
   skeletonContainer: { flex: 1, backgroundColor: background },
   skeletonWrap: { padding: spacing.base },
-  header: { paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.md },
+  header: {
+    paddingHorizontal: spacing.base,
+    paddingTop: spacing.base,
+    paddingBottom: spacing.md,
+  },
   searchInput: {
     borderWidth: 1,
     borderColor: border,
@@ -228,32 +279,37 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     color: foreground,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     marginBottom: spacing.sm,
   },
   chipsWrap: { marginBottom: spacing.sm },
-  chipsLabel: { fontSize: 12, fontWeight: '600', color: mutedForeground, marginBottom: 6 },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chipsLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: mutedForeground,
+    marginBottom: 6,
+  },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
     borderRadius: radius.full,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     borderWidth: 1,
     borderColor: border,
   },
   chipActive: { backgroundColor: primary, borderColor: primary },
   chipText: { fontSize: 14, color: foreground },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
+  chipTextActive: { color: "#fff", fontWeight: "600" },
   list: { paddingHorizontal: spacing.base },
   cardWrap: { marginBottom: spacing.md },
   details: { fontSize: 13, color: mutedForeground, marginTop: 4 },
-  actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  actionRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
   actionBtn: {
     paddingVertical: 8,
     paddingHorizontal: spacing.base,
     borderRadius: radius.sm,
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
-  actionBtnText: { fontSize: 14, fontWeight: '600', color: primary },
+  actionBtnText: { fontSize: 14, fontWeight: "600", color: primary },
 });

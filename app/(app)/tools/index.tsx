@@ -16,6 +16,7 @@ import {
   spacing,
   typography,
 } from "@/constants/theme";
+import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
 import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { toolRequestsService } from "@/services/requests/tools";
@@ -32,7 +33,14 @@ import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { format, startOfDay } from "date-fns";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -160,10 +168,15 @@ export default function ToolsScreen() {
   const consumeCatalogPending = useToolRequestDraftStore(
     (s) => s.consumeCatalogPending,
   );
+  const saveDraftBeforeCatalog = useToolRequestDraftStore(
+    (s) => s.saveDraftBeforeCatalog,
+  );
 
   const [toolRequests, setToolRequests] = useState<ToolRequest[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [createPickup, setCreatePickup] = useState("");
@@ -187,11 +200,16 @@ export default function ToolsScreen() {
   const [createToolsLoading, setCreateToolsLoading] = useState(false);
   const [toolsById, setToolsById] = useState<Map<string, Tool>>(new Map());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fromPullToRefresh = false) => {
     try {
-      setLoading(true);
+      if (fromPullToRefresh) {
+        setRefreshing(true);
+      } else if (!hasLoadedOnce.current) {
+        setLoading(true);
+      }
       const requestsRes = await toolRequestsService.list(1, 50);
       setToolRequests(requestsRes?.items ?? []);
+      hasLoadedOnce.current = true;
     } catch (error) {
       console.error("Failed to load requests", error);
       Alert.alert(
@@ -203,6 +221,7 @@ export default function ToolsScreen() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -253,27 +272,25 @@ export default function ToolsScreen() {
   useFocusEffect(
     useCallback(() => {
       const state = useToolRequestDraftStore.getState();
-      if (
-        state.openCreateModalOnReturn &&
-        state.catalogPendingCart.length > 0
-      ) {
-        const pending = consumeCatalogPending();
-        setCart((prev) => {
-          const merged = [...prev];
-          pending.forEach((p) => {
-            const existing = merged.find((c) => c.tool_id === p.tool_id);
-            if (existing) {
-              const idx = merged.indexOf(existing);
-              merged.splice(idx, 1, {
-                ...existing,
-                quantity: existing.quantity + p.quantity,
-              });
-            } else {
-              merged.push(p);
-            }
-          });
-          return merged;
+      if (state.openCreateModalOnReturn) {
+        const { pending, draft } = consumeCatalogPending();
+        // Restore draft and merge catalog items into cart
+        const merged = [...draft.cart];
+        pending.forEach((p) => {
+          const existing = merged.find((c) => c.tool_id === p.tool_id);
+          if (existing) {
+            const idx = merged.indexOf(existing);
+            merged.splice(idx, 1, {
+              ...existing,
+              quantity: existing.quantity + p.quantity,
+            });
+          } else {
+            merged.push(p);
+          }
         });
+        setCart(merged);
+        setCreatePickup(draft.pickup);
+        setCreateMessage(draft.message);
         setCreateModalOpen(true);
       }
       // Dismiss all modals/sheets when navigating away (e.g. via hamburger menu)
@@ -295,17 +312,26 @@ export default function ToolsScreen() {
   useSetHeaderOptions(
     useMemo(
       () => ({
-        title: 'Tools & Equipment',
-        subtitle: 'Request tools, track requests, and return items.',
+        title: "Tools & Equipment",
+        subtitle: "Request tools, track requests, and return items.",
         showBack: false,
         headerAction: {
-          label: 'New tool request',
+          label: "New tool request",
           onPress: () => setCreateModalOpen(true),
         },
       }),
       [],
     ),
+    "/(app)/tools",
   );
+
+  useCloseModalOnDrawerOpen(() => {
+    setCreateModalOpen(false);
+    setReturnModalOpen(false);
+    setReturnRequest(null);
+    setDetailSheetOpen(false);
+    setSelectedRequest(null);
+  });
 
   const addToCart = (tool: Tool) => {
     if (!tool || tool.total_stock <= 0) return;
@@ -344,6 +370,7 @@ export default function ToolsScreen() {
   };
 
   const handleOpenCatalog = () => {
+    saveDraftBeforeCatalog(cart, createPickup, createMessage);
     setCreateModalOpen(false);
     router.push("/(app)/tools/catalog");
   };
@@ -555,8 +582,8 @@ export default function ToolsScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={loading}
-              onRefresh={load}
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
               tintColor={primary}
             />
           }

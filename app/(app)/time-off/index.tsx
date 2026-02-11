@@ -4,17 +4,18 @@ import { ListCard } from "@/components/ui/ListCard";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { SkeletonListCard } from "@/components/ui/Skeleton";
 import {
-  background,
-  border,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  primaryForeground,
-  radius,
-  spacing,
-  statusBadge,
+    background,
+    border,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    radius,
+    spacing,
+    statusBadge,
 } from "@/constants/theme";
+import { useCloseModalOnDrawerOpen } from "@/contexts/DrawerModalContext";
 import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
 import { timeOffRequestsService } from "@/services/requests/timeOffs";
 import type { TimeOffRequest } from "@/types/requests/timeOffs";
@@ -22,17 +23,17 @@ import { getErrorMessage } from "@/utils/errorMessage";
 import { toast as showToast } from "@/utils/toast";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { addDays, format, startOfDay } from "date-fns";
-import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    Alert,
+    Platform,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -53,9 +54,12 @@ function getTodayYMD(): string {
 }
 
 export default function TimeOffScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnce = useRef(false);
   const [filter, setFilter] = useState<Filter>("open");
   const [modalOpen, setModalOpen] = useState(false);
   const [entityType, setEntityType] = useState<
@@ -88,11 +92,16 @@ export default function TimeOffScreen() {
       : r.status === "Approved" || r.status === "Denied",
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (fromPullToRefresh = false) => {
     try {
-      setLoading(true);
+      if (fromPullToRefresh) {
+        setRefreshing(true);
+      } else if (!hasLoadedOnce.current) {
+        setLoading(true);
+      }
       const res = await timeOffRequestsService.list(1, 50);
       setRequests(res?.items ?? []);
+      hasLoadedOnce.current = true;
     } catch (error) {
       console.error("Failed to load time off requests", error);
       Alert.alert(
@@ -104,6 +113,7 @@ export default function TimeOffScreen() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -150,7 +160,10 @@ export default function TimeOffScreen() {
       }),
       [],
     ),
+    "/(app)/time-off",
   );
+
+  useCloseModalOnDrawerOpen(() => setModalOpen(false));
 
   const handleCreate = async () => {
     if (!startDate.trim() || !endDate.trim()) return;
@@ -216,8 +229,8 @@ export default function TimeOffScreen() {
         ]}
         refreshControl={
           <RefreshControl
-            refreshing={loading}
-            onRefresh={load}
+            refreshing={refreshing}
+            onRefresh={() => load(true)}
             tintColor={primary}
           />
         }
@@ -259,6 +272,7 @@ export default function TimeOffScreen() {
                   backgroundColor: getStatusBadgeStyle(item.status).bg,
                   textColor: getStatusBadgeStyle(item.status).text,
                 }}
+                onPress={() => router.push(`/(app)/time-off/${item.id}`)}
               />
             </View>
           ))

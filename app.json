@@ -58,7 +58,8 @@
           "cameraPermission": "Allow Do You Work to access your camera to take photos for receipts and spiffs."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -27,6 +27,21 @@ const NotificationContext = createContext<NotificationContextType | undefined>(
   undefined
 );
 
+function getCloseCodeDescription(code: number): string {
+  const codes: Record<number, string> = {
+    1000: 'Normal closure',
+    1001: 'Going away',
+    1002: 'Protocol error',
+    1003: 'Unsupported data',
+    1006: 'Abnormal closure (no close frame)',
+    1008: 'Policy violation',
+    1009: 'Message too big',
+    1011: 'Server error',
+    1015: 'TLS handshake failure',
+  };
+  return codes[code] ?? `Unknown (${code})`;
+}
+
 function getWebSocketUrl(userId: string, token: string): string {
   const wsBase = getWebSocketNotificationsBaseUrl();
   const path = wsBase.includes('/ws/notifications')
@@ -167,6 +182,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const connectWebSocket = () => {
         try {
           const wsUrl = getWebSocketUrl(userId, token);
+          const wsBaseForLog = wsUrl.replace(/\?token=.*$/, '');
+          if (__DEV__) {
+            console.debug('[NotificationContext] Connecting to WebSocket:', wsBaseForLog);
+          }
           const ws = new WebSocket(wsUrl);
           wsRef.current = ws;
 
@@ -240,7 +259,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           };
 
           ws.onerror = () => {
-            console.error('[NotificationContext] WebSocket error');
+            // WebSocket API does not provide error details in onerror.
+            // onclose will fire next with code/reason.
+            if (__DEV__) {
+              console.warn('[NotificationContext] WebSocket error (check onclose for code/reason)');
+            }
           };
 
           ws.onclose = (event) => {
@@ -250,6 +273,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               pingIntervalRef.current = null;
             }
             if (event.code !== 1000 && !cancelled) {
+              if (__DEV__) {
+                console.warn('[NotificationContext] WebSocket closed:', {
+                  code: event.code,
+                  reason: event.reason || getCloseCodeDescription(event.code),
+                });
+              }
               reconnectTimeoutRef.current = setTimeout(() => {
                 connectWebSocket();
               }, 3000);

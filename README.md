@@ -241,6 +241,8 @@ The app uses [file-based routing](https://docs.expo.dev/router/introduction/) vi
 | Variable                                | Description                                                                        |
 | --------------------------------------- | ---------------------------------------------------------------------------------- |
 | `EXPO_PUBLIC_WS_NOTIFICATIONS_BASE_URL` | WebSocket notifications URL. If unset, derived from API base (http→ws, https→wss). |
+| `EXPO_PUBLIC_POSTHOG_API_KEY`           | PostHog project API key for analytics.                                             |
+| `EXPO_PUBLIC_POSTHOG_HOST`              | PostHog host (default: `https://us.i.posthog.com`).                                |
 
 ### Example `.env`
 

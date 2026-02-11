@@ -6,10 +6,12 @@ import {
   spacing,
   typography,
 } from '@/constants/theme';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { useMainStore } from '@/store/main';
 import { getMediaUrl } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import { useRouter } from 'expo-router';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -41,6 +43,8 @@ function getInitials(name: string): string {
 
 export function DashboardHero({ selectedDate, onMenuClick }: DashboardHeroProps) {
   const me = useMainStore((state) => state.me);
+  const router = useRouter();
+  const { unreadCount } = useNotifications();
   const dayName = format(selectedDate, 'EEEE');
   const fullDate = format(selectedDate, 'MMMM d, yyyy');
   const insets = useSafeAreaInsets();
@@ -61,21 +65,41 @@ export function DashboardHero({ selectedDate, onMenuClick }: DashboardHeroProps)
           >
             <Ionicons name="menu" size={28} color={primaryForeground} />
           </Pressable>
-          <View style={styles.avatarWrap}>
-            {avatarUri ? (
-              <ExpoImage
-                source={{ uri: avatarUri }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={styles.avatarFallback}>
-                <Text style={styles.avatarText}>
-                  {me?.first_name
-                    ? getInitials(`${me.first_name} ${me.last_name || ''}`)
-                    : '?'}
-                </Text>
-              </View>
-            )}
+          <View style={styles.topBarRight}>
+            <Pressable
+              onPress={() => router.push('/(app)/notifications')}
+              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+              accessibilityLabel={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+            >
+              <Ionicons name="notifications-outline" size={24} color={primaryForeground} />
+              {unreadCount > 0 ? (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/(app)/settings')}
+              style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
+              accessibilityLabel="My account"
+            >
+              {avatarUri ? (
+                <ExpoImage
+                  source={{ uri: avatarUri }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>
+                    {me?.first_name
+                      ? getInitials(`${me.first_name} ${me.last_name || ''}`)
+                      : '?'}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
           </View>
         </View>
 
@@ -123,6 +147,33 @@ const styles = StyleSheet.create({
   menuBtn: {
     padding: spacing.sm,
     margin: -spacing.sm,
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  iconBtn: {
+    padding: spacing.sm,
+    margin: -spacing.sm,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#fff',
   },
   pressed: {
     opacity: 0.7,

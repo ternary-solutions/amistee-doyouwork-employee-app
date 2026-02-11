@@ -16,10 +16,12 @@ import { toolsService } from '@/services/tools';
 import { getErrorMessage } from '@/utils/errorMessage';
 import type { ToolRequest, ToolRequestLineItem } from '@/types/requests/tools';
 import type { Tool } from '@/types/tools';
+import { useToolRequestDraftStore, type CartItem } from '@/store/toolRequestDraft';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -34,7 +36,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -52,8 +54,6 @@ const STATUS_COLORS: Record<string, string> = {
 function formatDate(d: string | null | undefined) {
   return d ? new Date(d).toLocaleDateString() : '—';
 }
-
-type CartItem = { tool_id: string; quantity: number };
 
 function getToolNames(request: ToolRequest): string {
   const items = request.items ?? [];
@@ -140,9 +140,17 @@ function getOutstandingSummary(request: ToolRequest): string {
   return `${request.tool?.tool_name ?? request.tool_type?.name ?? 'Tool'} × ${out}`;
 }
 
+const COMBO_RESULTS_LIMIT = 8;
+const MIN_PICKUP_DATE = new Date();
+MIN_PICKUP_DATE.setHours(0, 0, 0, 0);
+const MAX_PICKUP_DATE = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+
 export default function ToolsScreen() {
   const navigation = useNavigation();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const consumeCatalogPending = useToolRequestDraftStore((s) => s.consumeCatalogPending);
+
   const [toolRequests, setToolRequests] = useState<ToolRequest[]>([]);
   const [tools, setTools] = useState<Tool[]>([]);
   const [loading, setLoading] = useState(false);
@@ -164,11 +172,7 @@ export default function ToolsScreen() {
 
   const [createToolsSearch, setCreateToolsSearch] = useState('');
   const debouncedSearch = useDebouncedValue(createToolsSearch, 300);
-  const [createToolsPage, setCreateToolsPage] = useState(1);
-  const [createToolsTotalPages, setCreateToolsTotalPages] = useState(1);
-  const [createToolsTotal, setCreateToolsTotal] = useState(0);
   const [createToolsLoading, setCreateToolsLoading] = useState(false);
-  const [createToolsLoadingMore, setCreateToolsLoadingMore] = useState(false);
   const [toolsById, setToolsById] = useState<Map<string, Tool>>(new Map());
 
   const load = useCallback(async () => {
@@ -184,23 +188,14 @@ export default function ToolsScreen() {
     }
   }, []);
 
-  const PAGE_SIZE = 24;
   const loadCreateTools = useCallback(
-    async (pageNum: number, append: boolean) => {
+    async () => {
       if (!createModalOpen) return;
-      if (append) setCreateToolsLoadingMore(true);
-      else setCreateToolsLoading(true);
+      setCreateToolsLoading(true);
       try {
-        const data = await toolsService.list(
-          pageNum,
-          PAGE_SIZE,
-          debouncedSearch || undefined
-        );
+        const data = await toolsService.list(1, COMBO_RESULTS_LIMIT, debouncedSearch || undefined);
         const items = data?.items ?? [];
-        setTools((prev) => (append ? [...prev, ...items] : items));
-        setCreateToolsPage(pageNum);
-        setCreateToolsTotalPages(data?.total_pages ?? 1);
-        setCreateToolsTotal(data?.total ?? 0);
+        setTools(items);
         setToolsById((prev) => {
           const next = new Map(prev);
           items.forEach((t) => next.set(t.id, t));
@@ -211,7 +206,6 @@ export default function ToolsScreen() {
         Alert.alert('Error', getErrorMessage(error, 'Failed to load tools. Please try again.'));
       } finally {
         setCreateToolsLoading(false);
-        setCreateToolsLoadingMore(false);
       }
     },
     [createModalOpen, debouncedSearch]
@@ -219,30 +213,36 @@ export default function ToolsScreen() {
 
   useEffect(() => {
     if (createModalOpen) {
-      setCreateToolsPage(1);
-      loadCreateTools(1, false);
+      loadCreateTools();
     } else {
       setTools([]);
       setCreateToolsSearch('');
-      setCreateToolsPage(1);
       setToolsById(new Map());
     }
   }, [createModalOpen, debouncedSearch, loadCreateTools]);
 
-  const loadMoreCreateTools = useCallback(() => {
-    if (createToolsPage >= createToolsTotalPages || createToolsLoadingMore || createToolsLoading)
-      return;
-    const nextPage = createToolsPage + 1;
-    setCreateToolsPage(nextPage);
-    setCreateToolsLoadingMore(true);
-    loadCreateTools(nextPage, true);
-  }, [
-    createToolsPage,
-    createToolsTotalPages,
-    createToolsLoadingMore,
-    createToolsLoading,
-    loadCreateTools,
-  ]);
+  useFocusEffect(
+    useCallback(() => {
+      const state = useToolRequestDraftStore.getState();
+      if (state.openCreateModalOnReturn && state.catalogPendingCart.length > 0) {
+        const pending = consumeCatalogPending();
+        setCart((prev) => {
+          const merged = [...prev];
+          pending.forEach((p) => {
+            const existing = merged.find((c) => c.tool_id === p.tool_id);
+            if (existing) {
+              const idx = merged.indexOf(existing);
+              merged.splice(idx, 1, { ...existing, quantity: existing.quantity + p.quantity });
+            } else {
+              merged.push(p);
+            }
+          });
+          return merged;
+        });
+        setCreateModalOpen(true);
+      }
+    }, [consumeCatalogPending])
+  );
 
   useEffect(() => {
     load();
@@ -286,6 +286,11 @@ export default function ToolsScreen() {
 
   const removeFromCart = (toolId: string) => {
     setCart((prev) => prev.filter((c) => c.tool_id !== toolId));
+  };
+
+  const handleOpenCatalog = () => {
+    setCreateModalOpen(false);
+    router.push('/(app)/tools/catalog');
   };
 
   const handleCreate = async () => {
@@ -345,7 +350,7 @@ export default function ToolsScreen() {
       load();
     } catch (error) {
       console.error('Return tool failed', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to return tool. Please try again.'));
+      Alert.alert('Error', getErrorMessage(error, 'Failed to return tool.'));
     } finally {
       setReturnSubmitting(false);
     }
@@ -366,6 +371,17 @@ export default function ToolsScreen() {
     setDetailSheetOpen(false);
     setSelectedRequest(null);
     openReturnModal(req);
+  };
+
+  const handleDateChange = (_: unknown, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowPickupDatePicker(false);
+    }
+    if (selectedDate) setCreatePickup(selectedDate.toISOString().slice(0, 10));
+  };
+
+  const confirmDatePicker = () => {
+    setShowPickupDatePicker(false);
   };
 
   if (loading && toolRequests.length === 0) {
@@ -449,7 +465,6 @@ export default function ToolsScreen() {
             <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
           }
         >
-          {/* Tools to return section */}
           {requestsToReturn.length > 0 && (
             <View style={styles.toReturnSection}>
               <Text style={styles.sectionTitle}>Tools to return</Text>
@@ -468,9 +483,7 @@ export default function ToolsScreen() {
                   accessibilityRole="button"
                 >
                   <View style={styles.toReturnCardContent}>
-                    <Text style={styles.toReturnCardTitle}>
-                      {getToolNames(req)}
-                    </Text>
+                    <Text style={styles.toReturnCardTitle}>{getToolNames(req)}</Text>
                     <Text style={styles.toReturnCardMeta}>
                       Out: {getOutstandingSummary(req)}
                     </Text>
@@ -486,7 +499,6 @@ export default function ToolsScreen() {
             </View>
           )}
 
-          {/* My Requests section */}
           <View style={styles.requestsSection}>
             <Text style={styles.sectionTitle}>My Requests</Text>
             {toolRequests.map((item) => renderRequestCard(item))}
@@ -494,7 +506,6 @@ export default function ToolsScreen() {
         </ScrollView>
       )}
 
-      {/* Create modal: multi-tool cart */}
       <FormModal
         visible={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
@@ -506,79 +517,60 @@ export default function ToolsScreen() {
         contentMaxHeight="85%"
       >
         <Text style={styles.label}>Select tools</Text>
-        <TextInput
-          style={[styles.input, styles.searchInput]}
-          value={createToolsSearch}
-          onChangeText={setCreateToolsSearch}
-          placeholder="Search tools..."
-          placeholderTextColor={mutedForeground}
-        />
-        <ScrollView
-          style={styles.toolListScroll}
-          onScroll={({ nativeEvent }) => {
-            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-            const paddingToBottom = 60;
-            if (
-              layoutMeasurement.height + contentOffset.y >=
-              contentSize.height - paddingToBottom
-            ) {
-              loadMoreCreateTools();
-            }
-          }}
-          scrollEventThrottle={400}
-          nestedScrollEnabled
-        >
+        <View style={styles.comboboxRow}>
+          <TextInput
+            style={[styles.input, styles.searchInput]}
+            value={createToolsSearch}
+            onChangeText={setCreateToolsSearch}
+            placeholder="Search tools..."
+            placeholderTextColor={mutedForeground}
+          />
+          <Pressable
+            style={({ pressed }) => [styles.catalogBtn, pressed && { opacity: 0.8 }]}
+            onPress={handleOpenCatalog}
+          >
+            <Ionicons name="list" size={18} color={primaryForeground} />
+            <Text style={styles.catalogBtnText}>Catalog</Text>
+          </Pressable>
+        </View>
+        <View style={styles.comboboxDropdown}>
           {createToolsLoading ? (
             <View style={styles.toolsLoader}>
               <ActivityIndicator size="small" color={primary} />
             </View>
           ) : tools.length === 0 ? (
             <Text style={styles.mutedText}>
-              {debouncedSearch ? 'No tools match your search.' : 'No tools available.'}
+              {debouncedSearch ? 'No tools match. Try catalog.' : 'Search or browse catalog.'}
             </Text>
           ) : (
-            <>
-              {tools.map((t) => (
-                <View key={t.id} style={styles.toolRow}>
+            <FlatList
+              data={tools}
+              keyExtractor={(t) => t.id}
+              renderItem={({ item: t }) => (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.toolRow,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  onPress={() => addToCart(t)}
+                  disabled={createToolsLoading || t.total_stock <= 0}
+                >
                   <View style={styles.toolInfo}>
                     <Text style={styles.toolName}>{t.tool_name}</Text>
                     <Text style={styles.toolStock}>
                       {t.total_stock > 0 ? `Stock: ${t.total_stock}` : 'Out of stock'}
                     </Text>
                   </View>
-                  <Pressable
-                    style={[
-                      styles.addToolBtn,
-                      (createToolsLoading || t.total_stock <= 0) && styles.addToolBtnDisabled,
-                    ]}
-                    onPress={() => addToCart(t)}
-                    disabled={createToolsLoading || t.total_stock <= 0}
-                  >
-                    <Text style={styles.addToolBtnText}>
-                      {cart.find((c) => c.tool_id === t.id) ? 'Add more' : 'Add'}
-                    </Text>
-                  </Pressable>
-                </View>
-              ))}
-              {!createToolsLoading && createToolsPage < createToolsTotalPages && (
-                createToolsLoadingMore ? (
-                  <View style={styles.loadMoreLoader}>
-                    <ActivityIndicator size="small" color={primary} />
-                  </View>
-                ) : (
-                  <Pressable
-                    style={({ pressed }) => [styles.loadMoreBtn, pressed && { opacity: 0.8 }]}
-                    onPress={loadMoreCreateTools}
-                  >
-                    <Text style={styles.loadMoreBtnText}>
-                      Load more ({tools.length} of {createToolsTotal})
-                    </Text>
-                  </Pressable>
-                )
+                  <Text style={styles.addToolBtnText}>
+                    {cart.find((c) => c.tool_id === t.id) ? '+ Add more' : '+ Add'}
+                  </Text>
+                </Pressable>
               )}
-            </>
+              scrollEnabled={false}
+            />
           )}
-        </ScrollView>
+        </View>
+
         <Text style={styles.label}>Cart ({cart.reduce((s, c) => s + c.quantity, 0)} item(s))</Text>
         {cart.length === 0 ? (
           <Text style={styles.mutedText}>Your cart is empty.</Text>
@@ -616,26 +608,51 @@ export default function ToolsScreen() {
             })}
           </View>
         )}
+
         <Text style={styles.label}>Pickup date</Text>
         <Pressable
-          style={styles.dateBtn}
+          style={[
+            styles.dateBtn,
+            createPickup && styles.dateBtnSelected,
+          ]}
           onPress={() => setShowPickupDatePicker(true)}
         >
           <Text style={[styles.dateBtnText, !createPickup && styles.dateBtnPlaceholder]}>
             {createPickup ? new Date(createPickup + 'T12:00:00').toLocaleDateString() : 'Select date'}
           </Text>
+          {createPickup ? (
+            <Ionicons name="checkmark-circle" size={20} color={primary} style={styles.dateCheck} />
+          ) : null}
         </Pressable>
         {showPickupDatePicker && (
-          <DateTimePicker
-            value={createPickup ? new Date(createPickup + 'T12:00:00') : new Date()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(_, selectedDate) => {
-              setShowPickupDatePicker(Platform.OS === 'ios');
-              if (selectedDate) setCreatePickup(selectedDate.toISOString().slice(0, 10));
-            }}
-          />
+          <View style={styles.datePickerContainer}>
+            <DateTimePicker
+              value={createPickup ? new Date(createPickup + 'T12:00:00') : new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              minimumDate={MIN_PICKUP_DATE}
+              maximumDate={MAX_PICKUP_DATE}
+              onChange={handleDateChange}
+            />
+            {Platform.OS === 'ios' && (
+              <View style={styles.datePickerActions}>
+                <Pressable
+                  style={({ pressed }) => [styles.datePickerBtn, pressed && { opacity: 0.8 }]}
+                  onPress={() => setShowPickupDatePicker(false)}
+                >
+                  <Text style={styles.datePickerCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.datePickerBtn, styles.datePickerDone, pressed && { opacity: 0.8 }]}
+                  onPress={confirmDatePicker}
+                >
+                  <Text style={styles.datePickerDoneText}>Done</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
         )}
+
         <Text style={styles.label}>Comment (optional)</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
@@ -647,7 +664,6 @@ export default function ToolsScreen() {
         />
       </FormModal>
 
-      {/* Return modal */}
       <Modal visible={returnModalOpen} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -813,9 +829,42 @@ const styles = StyleSheet.create({
   modalScroll: { maxHeight: 400 },
   modalTitle: { ...typography.sectionTitle, marginBottom: spacing.lg },
   label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },
-  dateBtn: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base },
-  dateBtnText: { fontSize: 16, color: foreground },
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+  },
+  dateBtnSelected: {
+    borderColor: primary,
+    backgroundColor: `${primary}08`,
+  },
+  dateBtnText: { fontSize: 16, color: foreground, flex: 1 },
   dateBtnPlaceholder: { color: mutedForeground },
+  dateCheck: { marginLeft: spacing.sm },
+  datePickerContainer: {
+    marginBottom: spacing.base,
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  datePickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: border,
+    backgroundColor: muted,
+  },
+  datePickerBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  datePickerDone: { backgroundColor: primary },
+  datePickerCancelText: { fontSize: 16, color: foreground },
+  datePickerDoneText: { fontSize: 16, fontWeight: '600', color: primaryForeground },
   input: {
     borderWidth: 1,
     borderColor: border,
@@ -826,17 +875,33 @@ const styles = StyleSheet.create({
   },
   textArea: { minHeight: 60 },
   mutedText: { fontSize: 14, color: mutedForeground, marginBottom: spacing.base },
-  searchInput: { marginBottom: spacing.sm },
-  toolList: { marginBottom: spacing.base },
-  toolListScroll: { maxHeight: 200, marginBottom: spacing.base },
-  toolsLoader: { paddingVertical: spacing.lg, alignItems: 'center' },
-  loadMoreLoader: { paddingVertical: spacing.sm, alignItems: 'center' },
-  loadMoreBtn: {
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    marginTop: spacing.xs,
+  searchInput: { marginBottom: 0, flex: 1 },
+  comboboxRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  loadMoreBtnText: { fontSize: 14, fontWeight: '500', color: primary },
+  catalogBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: primary,
+    justifyContent: 'center',
+  },
+  catalogBtnText: { fontSize: 14, fontWeight: '600', color: primaryForeground },
+  comboboxDropdown: {
+    maxHeight: 220,
+    marginBottom: spacing.base,
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.xs,
+    backgroundColor: card,
+  },
+  toolList: { marginBottom: spacing.base },
+  toolsLoader: { paddingVertical: spacing.lg, alignItems: 'center' },
   toolRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -850,14 +915,7 @@ const styles = StyleSheet.create({
   toolInfo: { flex: 1 },
   toolName: { fontSize: 14, fontWeight: '600', color: foreground },
   toolStock: { fontSize: 12, color: mutedForeground },
-  addToolBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: primary,
-  },
-  addToolBtnDisabled: { opacity: 0.5 },
-  addToolBtnText: { fontSize: 13, fontWeight: '600', color: primaryForeground },
+  addToolBtnText: { fontSize: 13, fontWeight: '600', color: primary },
   cartList: { marginBottom: spacing.base },
   cartRow: {
     flexDirection: 'row',

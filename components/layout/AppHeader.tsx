@@ -3,6 +3,7 @@ import {
     primaryDark,
     primaryForeground,
 } from '@/constants/theme';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { useMainStore } from '@/store/main';
 import { getMediaUrl } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -70,6 +71,7 @@ export function AppHeader({
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const me = useMainStore((state) => state.me);
+  const { unreadCount } = useNotifications();
 
   const canGoBack = navigation.canGoBack();
   const showBack = typeof showBackProp === 'boolean' ? showBackProp : canGoBack;
@@ -100,6 +102,7 @@ export function AppHeader({
 
   const goToDashboard = () => router.replace('/(app)/dashboard');
   const goToSettings = () => router.push('/(app)/settings');
+  const goToNotifications = () => router.push('/(app)/notifications');
 
   const avatarUri = getMediaUrl(me?.photo_url) || '';
 
@@ -139,15 +142,30 @@ export function AppHeader({
           />
         </Pressable>
 
-        {headerAction ? (
+        <View style={styles.rightSection}>
+          {headerAction ? (
+            <Pressable
+              onPress={headerAction.onPress}
+              style={({ pressed }) => [styles.rightIconBtn, pressed && styles.pressed]}
+              accessibilityLabel={headerAction.label}
+            >
+              <Ionicons name="add" size={24} color={primaryForeground} />
+            </Pressable>
+          ) : null}
           <Pressable
-            onPress={headerAction.onPress}
-            style={({ pressed }) => [styles.actionBtn, pressed && styles.pressed]}
-            accessibilityLabel={headerAction.label}
+            onPress={goToNotifications}
+            style={({ pressed }) => [styles.rightIconBtn, pressed && styles.pressed]}
+            accessibilityLabel={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
           >
-            <Ionicons name="add" size={24} color={primaryForeground} />
+            <Ionicons name="notifications-outline" size={24} color={primaryForeground} />
+            {unreadCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
-        ) : (
           <Pressable
             onPress={goToSettings}
             style={({ pressed }) => [styles.avatarBtn, pressed && styles.pressed]}
@@ -163,7 +181,7 @@ export function AppHeader({
               </View>
             )}
           </Pressable>
-        )}
+        </View>
       </View>
 
       {(title || subtitle) && (
@@ -204,18 +222,39 @@ const styles = StyleSheet.create({
     width: 120,
     height: 32,
   },
-  actionBtn: {
-    width: 44,
-    height: 44,
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rightIconBtn: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+  },
+  badge: {
+    position: 'absolute',
+    right: 2,
+    top: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
   avatarBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',

@@ -16,6 +16,8 @@ type FormModalProps = {
   onSubmit: () => void;
   /** Max height for the content area (default '80%') */
   contentMaxHeight?: string | number;
+  /** Initial snap index (0 = first snap point, 1 = second). Default 1 so sheet opens at max height. */
+  initialSnapIndex?: number;
 };
 
 export function FormModal({
@@ -28,6 +30,7 @@ export function FormModal({
   submitDisabled = false,
   onSubmit,
   contentMaxHeight = '80%',
+  initialSnapIndex = 1,
 }: FormModalProps) {
   const disabled = submitting || submitDisabled;
   const bottomSheetRef = useRef<BottomSheetModal>(null);
@@ -49,9 +52,10 @@ export function FormModal({
     <BottomSheetModal
       ref={bottomSheetRef}
       snapPoints={snapPoints}
+      index={initialSnapIndex}
       onDismiss={handleDismiss}
       enablePanDownToClose
-      keyboardBehavior="interactive"
+      keyboardBehavior="extend"
       android_keyboardInputMode="adjustResize"
       backgroundStyle={styles.background}
       handleIndicatorStyle={styles.handle}

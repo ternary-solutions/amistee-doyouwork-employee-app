@@ -1,11 +1,9 @@
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { useMainStore } from '@/store/main';
 import { deviceTokenService, type DevicePlatform } from '@/services/deviceTokens';
 
 const ROUTE_MAP: Record<string, string> = {
-  schedule: '/(app)/schedule',
+  schedule: '/(app)/dashboard',
   expense: '/(app)/expenses',
   spiff: '/(app)/spiffs',
   tool: '/(app)/tools',
@@ -16,6 +14,10 @@ const ROUTE_MAP: Record<string, string> = {
 };
 
 type NavigateFn = (href: string) => void;
+
+function isWeb(): boolean {
+  return Platform.OS === 'web';
+}
 
 class PushNotificationService {
   private tokenRegistered = false;
@@ -33,15 +35,19 @@ class PushNotificationService {
   }
 
   async initialize(): Promise<void> {
+    if (isWeb()) return;
     const me = useMainStore.getState().me;
     if (!me) return;
 
-    if (!Device.isDevice) {
-      console.log('[PushNotifications] Must use a physical device for push');
-      return;
-    }
-
     try {
+      const Notifications = await import('expo-notifications');
+      const Device = await import('expo-device');
+
+      if (!Device.isDevice) {
+        console.log('[PushNotifications] Must use a physical device for push');
+        return;
+      }
+
       const { status: existing } = await Notifications.getPermissionsAsync();
       let final = existing;
       if (existing !== 'granted') {
@@ -53,7 +59,7 @@ class PushNotificationService {
         return;
       }
 
-      this.setupNotificationResponseListener();
+      this.setupNotificationResponseListener(Notifications);
 
       const tokenData = await Notifications.getDevicePushTokenAsync();
       const token = tokenData?.data;
@@ -65,7 +71,7 @@ class PushNotificationService {
     }
   }
 
-  private setupNotificationResponseListener(): void {
+  private setupNotificationResponseListener(Notifications: Awaited<typeof import('expo-notifications')>): void {
     Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as Record<string, unknown>;
       const notificationId = (data?.notification_id ?? data?.id) as string | undefined;

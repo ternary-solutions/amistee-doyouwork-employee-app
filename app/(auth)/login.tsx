@@ -1,10 +1,25 @@
+import {
+  border,
+  card,
+  destructive,
+  foreground,
+  mutedForeground,
+  primary,
+  primaryDark,
+  primaryForeground,
+  radius,
+  spacing,
+  typography,
+} from '@/constants/theme';
 import { useMainStore } from '@/store/main';
 import { fetchMe, login } from '@/utils/api';
 import { tokenStorage } from '@/utils/tokenStorage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,6 +29,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -64,154 +80,185 @@ export default function LoginScreen() {
 
   if (checkingAuth) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#fff" />
-      </View>
+      <LinearGradient
+        colors={[primaryDark, primary]}
+        style={styles.gradient}
+      >
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={primaryForeground} />
+        </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.card}>
-          <Text style={styles.logo}>Amistee</Text>
-          <Text style={styles.title}>Amistee Employee</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
-
-          <Text style={styles.label}>Email or Phone Number</Text>
-          <TextInput
-            style={styles.input}
-            value={identifier}
-            onChangeText={setIdentifier}
-            placeholder="your.email@example.com or +1234567890"
-            placeholderTextColor="#94a3b8"
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-          />
-
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor="#94a3b8"
-            secureTextEntry
-            autoComplete="password"
-          />
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Pressable
-            onPress={() => router.push('/(auth)/forgot-password')}
-            style={styles.forgotLink}
+    <LinearGradient colors={[primaryDark, primary]} style={styles.gradient}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.forgotLinkText}>Forgot password?</Text>
-          </Pressable>
+            <View style={styles.logoWrap}>
+              <Image
+                source={require('../../assets/images/doyouwork-logo.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.brandTitle}>Amistee</Text>
+            <Text style={styles.title}>Amistee Employee</Text>
+            <Text style={styles.subtitle}>Sign in to your account</Text>
 
-          <Pressable
-            style={[
-              styles.button,
-              (!canSubmit || submitting) && styles.buttonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={!canSubmit || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Text style={styles.label}>Email or Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              value={identifier}
+              onChangeText={setIdentifier}
+              placeholder="your.email@example.com or +1234567890"
+              placeholderTextColor={mutedForeground}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+            />
+
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor={mutedForeground}
+              secureTextEntry
+              autoComplete="password"
+            />
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <Pressable
+              onPress={() => router.push('/(auth)/forgot-password')}
+              style={styles.forgotLink}
+              accessibilityLabel="Forgot password?"
+              accessibilityRole="link"
+            >
+              <Text style={styles.forgotLinkText}>Forgot password?</Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.button,
+                (!canSubmit || submitting) && styles.buttonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!canSubmit || submitting}
+              accessibilityLabel="Sign in"
+              accessibilityRole="button"
+            >
+              {submitting ? (
+                <ActivityIndicator color={primaryForeground} />
+              ) : (
+                <Text style={styles.buttonText}>Sign In</Text>
+              )}
+            </Pressable>
+            </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradient: {
     flex: 1,
-    backgroundColor: '#073a78',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#073a78',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 16,
+    padding: spacing.base,
     paddingVertical: 48,
   },
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  logoImage: {
+    width: 200,
+    height: 96,
+  },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
   },
-  logo: {
+  brandTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#073a78',
+    color: primary,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111',
+    ...typography.title,
+    color: foreground,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: mutedForeground,
     textAlign: 'center',
     marginTop: 4,
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#334155',
+    color: foreground,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
+    borderColor: border,
+    borderRadius: radius.base,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
+    marginBottom: spacing.base,
+    backgroundColor: card,
   },
   errorText: {
     fontSize: 14,
-    color: '#dc2626',
-    marginBottom: 8,
+    color: destructive,
+    marginBottom: spacing.sm,
   },
   forgotLink: {
     alignSelf: 'flex-end',
-    marginBottom: 20,
+    marginBottom: spacing.base,
   },
   forgotLinkText: {
     fontSize: 14,
-    color: '#0b4a91',
+    color: primary,
   },
   button: {
-    backgroundColor: '#0b4a91',
-    borderRadius: 12,
+    backgroundColor: primary,
+    borderRadius: radius.base,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
@@ -221,7 +268,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: primaryForeground,
     fontSize: 16,
     fontWeight: '600',
   },

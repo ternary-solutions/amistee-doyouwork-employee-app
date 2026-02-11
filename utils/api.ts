@@ -13,6 +13,15 @@ export const getBaseUrl = (requireApiVersion = true): string => {
   return base.endsWith('/') ? base : `${base}/`;
 };
 
+/** Full URL for a media file (avatar, vehicle image, etc.). */
+export const getMediaUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const baseUrl = getBaseUrl(false).replace(/\/$/, '');
+  if (url.startsWith('/media/serve/')) return `${baseUrl}${url}`;
+  return `${baseUrl}/media/serve?path=${encodeURIComponent(url)}`;
+};
+
 async function refreshAccessToken(): Promise<RefreshTokenResponse> {
   const BASE_URL = getBaseUrl(true);
   const refreshToken = await tokenStorage.getRefreshToken();

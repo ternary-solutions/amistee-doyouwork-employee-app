@@ -1,21 +1,137 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Design tokens aligned with the Ionic app (index.css).
+ * Use these for consistent styling across the RN app.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
+// --- Semantic colors (light theme, Ionic HSL mapping) ---
+// Primary: hsl(214, 96%, 29%)
+export const primary = '#0b4a91';
+export const primaryForeground = '#ffffff';
+// Accent (teal): hsl(173, 80%, 40%)
+export const accent = '#14a085';
+export const accentForeground = '#ffffff';
+// Background / surface
+export const background = '#fafafa';
+export const foreground = '#0f172a';
+export const card = '#ffffff';
+export const cardForeground = '#0f172a';
+// Muted
+export const muted = '#e2e8f0';
+export const mutedForeground = '#64748b';
+// Border / input
+export const border = '#cbd5e1';
+export const input = '#e2e8f0';
+export const ring = '#3b82f6';
+// Status
+export const destructive = '#ef4444';
+export const destructiveForeground = '#ffffff';
+/** Light background for destructive actions (e.g. logout button) */
+export const destructiveMuted = '#fee2e2';
+export const success = '#16a34a';
+export const successForeground = '#ffffff';
+export const warning = '#eab308';
+export const warningForeground = '#ffffff';
+
+/** Primary gradient bottom (darker blue for hero) */
+export const primaryDark = '#0a3d75';
+
+/** All semantic colors in one object for StyleSheet */
+export const semanticColors = {
+  primary,
+  primaryForeground,
+  accent,
+  accentForeground,
+  background,
+  foreground,
+  card,
+  cardForeground,
+  muted,
+  mutedForeground,
+  border,
+  input,
+  ring,
+  destructive,
+  destructiveForeground,
+  destructiveMuted,
+  success,
+  successForeground,
+  warning,
+  warningForeground,
+  primaryDark,
+} as const;
+
+// --- Spacing (matches Ionic Tailwind usage) ---
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  base: 16,
+  lg: 24,
+  xl: 32,
+} as const;
+
+// --- Radius (0.75rem = 12) ---
+export const radius = {
+  sm: 8,
+  base: 12,
+  lg: 16,
+  full: 9999,
+} as const;
+
+// --- Typography ---
+export const typography = {
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+  },
+  body: {
+    fontSize: 16,
+    fontWeight: '400' as const,
+  },
+  bodySm: {
+    fontSize: 14,
+    fontWeight: '400' as const,
+  },
+  muted: {
+    fontSize: 14,
+    color: mutedForeground,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+    color: mutedForeground,
+  },
+  heroDay: {
+    fontSize: 36,
+    fontWeight: '700' as const,
+  },
+  heroDate: {
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.8)',
+  },
+} as const;
+
+// --- Legacy (keep for existing usage) ---
+const tintColorLight = primary;
 const tintColorDark = '#fff';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: foreground,
+    background,
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: mutedForeground,
+    tabIconDefault: mutedForeground,
     tabIconSelected: tintColorLight,
+    ...semanticColors,
   },
   dark: {
     text: '#ECEDEE',
@@ -29,13 +145,9 @@ export const Colors = {
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

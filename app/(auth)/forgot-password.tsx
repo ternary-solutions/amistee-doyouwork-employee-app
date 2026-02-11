@@ -1,4 +1,19 @@
+import {
+  border,
+  card,
+  destructive,
+  foreground,
+  muted,
+  mutedForeground,
+  primary,
+  primaryDark,
+  primaryForeground,
+  radius,
+  spacing,
+  typography,
+} from '@/constants/theme';
 import { authService } from '@/services/auth';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -11,6 +26,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Step = 'request' | 'verify' | 'reset';
 
@@ -110,21 +126,25 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <LinearGradient colors={[primaryDark, primary]} style={styles.gradient}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.card}>
-          <Pressable
-            onPress={() => router.back()}
-            style={styles.backLink}
-          >
-            <Text style={styles.backLinkText}>← Back to login</Text>
-          </Pressable>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.card}>
+            <Pressable
+              onPress={() => router.back()}
+              style={styles.backLink}
+              accessibilityLabel="Back to login"
+              accessibilityRole="link"
+            >
+              <Text style={styles.backLinkText}>← Back to login</Text>
+            </Pressable>
 
           <Text style={styles.title}>Reset Password</Text>
           <Text style={styles.subtitle}>
@@ -143,6 +163,8 @@ export default function ForgotPasswordScreen() {
                 <Pressable
                   style={[styles.toggleBtn, useEmail && styles.toggleBtnActive]}
                   onPress={() => setUseEmail(true)}
+                  accessibilityLabel="Use email"
+                  accessibilityRole="button"
                 >
                   <Text
                     style={[
@@ -156,6 +178,8 @@ export default function ForgotPasswordScreen() {
                 <Pressable
                   style={[styles.toggleBtn, !useEmail && styles.toggleBtnActive]}
                   onPress={() => setUseEmail(false)}
+                  accessibilityLabel="Use phone number"
+                  accessibilityRole="button"
                 >
                   <Text
                     style={[
@@ -177,7 +201,7 @@ export default function ForgotPasswordScreen() {
                 placeholder={
                   useEmail ? 'your.email@example.com' : '+1234567890'
                 }
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={mutedForeground}
                 keyboardType={useEmail ? 'email-address' : 'phone-pad'}
                 autoCapitalize="none"
               />
@@ -185,6 +209,8 @@ export default function ForgotPasswordScreen() {
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleRequestOTP}
                 disabled={isLoading}
+                accessibilityLabel="Send verification code"
+                accessibilityRole="button"
               >
                 <Text style={styles.buttonText}>
                   {isLoading ? 'Sending...' : 'Send Verification Code'}
@@ -201,7 +227,7 @@ export default function ForgotPasswordScreen() {
                 value={otpCode}
                 onChangeText={setOtpCode}
                 placeholder="000000"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={mutedForeground}
                 keyboardType="number-pad"
                 maxLength={6}
               />
@@ -213,6 +239,8 @@ export default function ForgotPasswordScreen() {
                   style={[styles.button, styles.buttonOutline]}
                   onPress={() => setStep('request')}
                   disabled={isLoading}
+                  accessibilityLabel="Back"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.buttonOutlineText}>Back</Text>
                 </Pressable>
@@ -223,6 +251,8 @@ export default function ForgotPasswordScreen() {
                   ]}
                   onPress={handleVerifyOTP}
                   disabled={isLoading || otpCode.length !== 6}
+                  accessibilityLabel="Verify code"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.buttonText}>
                     {isLoading ? 'Verifying...' : 'Verify'}
@@ -256,7 +286,7 @@ export default function ForgotPasswordScreen() {
                 value={newPassword}
                 onChangeText={setNewPassword}
                 placeholder="Min 8 characters"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={mutedForeground}
                 secureTextEntry
               />
               <Text style={styles.label}>Confirm Password</Text>
@@ -265,7 +295,7 @@ export default function ForgotPasswordScreen() {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Re-enter new password"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={mutedForeground}
                 secureTextEntry
               />
               <View style={styles.row}>
@@ -273,6 +303,8 @@ export default function ForgotPasswordScreen() {
                   style={[styles.button, styles.buttonOutline]}
                   onPress={() => setStep('verify')}
                   disabled={isLoading}
+                  accessibilityLabel="Back"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.buttonOutlineText}>Back</Text>
                 </Pressable>
@@ -289,6 +321,8 @@ export default function ForgotPasswordScreen() {
                     newPassword.length < 8 ||
                     newPassword !== confirmPassword
                   }
+                  accessibilityLabel="Reset password"
+                  accessibilityRole="button"
                 >
                   <Text style={styles.buttonText}>
                     {isLoading ? 'Resetting...' : 'Reset Password'}
@@ -297,119 +331,128 @@ export default function ForgotPasswordScreen() {
               </View>
             </>
           )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradient: {
     flex: 1,
-    backgroundColor: '#073a78',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 16,
+    justifyContent: 'center',
+    padding: spacing.base,
     paddingVertical: 48,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: card,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
   },
   backLink: {
-    marginBottom: 16,
+    marginBottom: spacing.base,
   },
   backLinkText: {
     fontSize: 14,
-    color: '#64748b',
+    color: mutedForeground,
   },
   title: {
+    ...typography.sectionTitle,
     fontSize: 22,
-    fontWeight: '700',
-    color: '#111',
+    color: foreground,
     textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#64748b',
+    color: mutedForeground,
     textAlign: 'center',
     marginBottom: 20,
   },
   errorText: {
     fontSize: 14,
-    color: '#dc2626',
+    color: destructive,
     marginBottom: 12,
   },
   toggleRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    gap: spacing.md,
+    marginBottom: spacing.base,
   },
   toggleBtn: {
     flex: 1,
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#f1f5f9',
+    paddingHorizontal: spacing.base,
+    borderRadius: radius.base,
+    backgroundColor: muted,
     alignItems: 'center',
   },
   toggleBtnActive: {
-    backgroundColor: '#0b4a91',
+    backgroundColor: primary,
   },
   toggleBtnText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#64748b',
+    color: mutedForeground,
   },
   toggleBtnTextActive: {
-    color: '#fff',
+    color: primaryForeground,
   },
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#334155',
+    color: foreground,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
+    borderColor: border,
+    borderRadius: radius.base,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
+    marginBottom: spacing.base,
+    backgroundColor: card,
   },
   hint: {
     fontSize: 13,
-    color: '#64748b',
+    color: mutedForeground,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.base,
   },
   row: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    gap: spacing.md,
+    marginBottom: spacing.base,
   },
   button: {
     flex: 1,
-    backgroundColor: '#0b4a91',
-    borderRadius: 12,
+    backgroundColor: primary,
+    borderRadius: radius.base,
     paddingVertical: 14,
     alignItems: 'center',
   },
   buttonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#0b4a91',
+    borderColor: primary,
   },
   buttonOutlineText: {
-    color: '#0b4a91',
+    color: primary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -417,7 +460,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: primaryForeground,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -426,9 +469,9 @@ const styles = StyleSheet.create({
   },
   resendText: {
     fontSize: 14,
-    color: '#0b4a91',
+    color: primary,
   },
   resendDisabled: {
-    color: '#94a3b8',
+    color: mutedForeground,
   },
 });

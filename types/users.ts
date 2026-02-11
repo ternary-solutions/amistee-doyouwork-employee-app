@@ -50,3 +50,11 @@ export interface User {
 }
 
 export type UserRole = 'ADMIN' | 'MANAGER' | 'EMPLOYEE';
+
+export interface UserInfo {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string | null;
+  role: UserRole;
+}

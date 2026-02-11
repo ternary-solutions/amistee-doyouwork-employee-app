@@ -1,3 +1,4 @@
+import { muted, mutedForeground, radius, spacing, typography } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { useMainStore } from '@/store/main';
 import { logout } from '@/utils/api';
@@ -35,28 +36,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: spacing.lg,
   },
   title: {
+    ...typography.sectionTitle,
     fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748b',
-    marginBottom: 24,
+    color: mutedForeground,
+    marginBottom: spacing.lg,
   },
   user: {
     fontSize: 14,
-    color: '#64748b',
-    marginBottom: 16,
+    color: mutedForeground,
+    marginBottom: spacing.base,
   },
   logoutBtn: {
     paddingVertical: 10,
     paddingHorizontal: 20,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 8,
+    backgroundColor: muted,
+    borderRadius: radius.sm,
   },
   logoutText: {
     fontSize: 16,

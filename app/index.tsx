@@ -1,3 +1,4 @@
+import { card, primary } from '@/constants/theme';
 import { useMainStore } from '@/store/main';
 import { tokenStorage } from '@/utils/tokenStorage';
 import { Redirect } from 'expo-router';
@@ -17,7 +18,7 @@ export default function Index() {
   if (hasToken === null) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#0b4a91" />
+        <ActivityIndicator size="large" color={primary} />
       </View>
     );
   }
@@ -34,6 +35,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: card,
   },
 });

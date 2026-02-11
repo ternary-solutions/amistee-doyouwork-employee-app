@@ -14,8 +14,9 @@ import {
 import { suggestionsService } from '@/services/suggestions';
 import type { Suggestion } from '@/types/suggestions';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -55,6 +56,13 @@ export default function SuggestionDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Suggestion', showBack: true }),
+      [],
+    ),
+  );
 
   if (loading) {
     return (

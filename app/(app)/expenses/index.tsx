@@ -26,9 +26,11 @@ import { toast as showToast } from '@/utils/toast';
 import { hapticImpact } from '@/utils/haptics';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { format, startOfDay, subDays } from 'date-fns';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     Image,
@@ -58,7 +60,6 @@ function isClosed(e: Expense) {
 }
 
 export default function ExpensesScreen() {
-  const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -107,12 +108,24 @@ export default function ExpensesScreen() {
     load();
   }, [load]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerAction: { label: 'New expense', onPress: () => setModalOpen(true) },
-      subtitle: 'Submit and track your work-related expenses',
-    });
-  }, [navigation]);
+  // Prefill date to today when opening create modal
+  useEffect(() => {
+    if (modalOpen && !date) {
+      setDate(format(startOfDay(new Date()), 'yyyy-MM-dd'));
+    }
+  }, [modalOpen, date]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({
+        title: 'Expenses',
+        subtitle: 'Submit and track your work-related expenses',
+        showBack: false,
+        headerAction: { label: 'New expense', onPress: () => setModalOpen(true) },
+      }),
+      []
+    )
+  );
 
   useEffect(() => {
     if (!modalOpen) {
@@ -334,9 +347,11 @@ export default function ExpensesScreen() {
             value={date ? new Date(date + 'T12:00:00') : new Date()}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={subDays(startOfDay(new Date()), 90)}
+            maximumDate={startOfDay(new Date())}
             onChange={(_, selectedDate) => {
               setShowDatePicker(Platform.OS === 'ios');
-              if (selectedDate) setDate(selectedDate.toISOString().slice(0, 10));
+              if (selectedDate) setDate(format(selectedDate, 'yyyy-MM-dd'));
             }}
           />
         )}
@@ -381,8 +396,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   skeletonWrap: { paddingHorizontal: spacing.base, gap: spacing.md },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.base },
-  summaryRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.base },
+  scrollContent: { paddingHorizontal: spacing.base, paddingTop: spacing.base },
+  summaryRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm, marginBottom: spacing.base },
   summaryCard: {
     flex: 1,
     backgroundColor: card,

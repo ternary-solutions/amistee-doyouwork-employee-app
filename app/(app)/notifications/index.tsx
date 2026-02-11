@@ -17,8 +17,9 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { hapticImpact } from '@/utils/haptics';
 import { formatDistanceToNow } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -53,6 +54,13 @@ export default function NotificationsListScreen() {
       setLoading(false);
     }
   }, [debouncedSearch]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Notifications', showBack: false }),
+      [],
+    ),
+  );
 
   useEffect(() => {
     load();

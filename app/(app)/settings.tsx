@@ -16,12 +16,13 @@ import { preferencesService } from '@/services/preferences';
 import { usersService } from '@/services/users';
 import { useMainStore } from '@/store/main';
 import type { Preference } from '@/types/preferences';
-import { getMediaUrl, logout } from '@/utils/api';
+import { getMediaSource, logout } from '@/utils/api';
 import { toast as showToast } from '@/utils/toast';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useState } from 'react';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -56,6 +57,13 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const me = useMainStore((state) => state.me);
   const setMe = useMainStore((state) => state.setMe);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Settings', showBack: false }),
+      [],
+    ),
+  );
 
   const [preferences, setPreferences] = useState<Preference | null>(null);
   const [loadingPrefs, setLoadingPrefs] = useState(true);
@@ -250,7 +258,7 @@ export default function SettingsScreen() {
         <View style={styles.photoRow}>
           <View style={styles.avatarWrap}>
             {me?.photo_url ? (
-              <Image source={{ uri: getMediaUrl(me.photo_url) }} style={styles.avatar} />
+              <Image source={getMediaSource(me.photo_url)} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <Text style={styles.avatarPlaceholderText}>

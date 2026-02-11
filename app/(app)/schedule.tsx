@@ -3,7 +3,8 @@ import { Card } from '@/components/ui/Card';
 import { SkeletonScheduleCard } from '@/components/ui/Skeleton';
 import { scheduleService } from '@/services/schedules';
 import type { MyScheduleResponse } from '@/types/schedules';
-import { getMediaUrl } from '@/utils/api';
+import { useMainStore } from '@/store/main';
+import { getMediaSource } from '@/utils/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   accent,
@@ -17,9 +18,10 @@ import {
   spacing,
   typography,
 } from '@/constants/theme';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { format } from 'date-fns';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
@@ -36,10 +38,22 @@ import { Button } from '@/components/ui/Button';
 export default function ScheduleScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const me = useMainStore((s) => s.me);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState<MyScheduleResponse[]>([]);
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({
+        title: 'My Schedule',
+        subtitle: 'View your assigned schedule by date.',
+        showBack: false,
+      }),
+      [],
+    ),
+  );
 
   const loadSchedules = useCallback(async () => {
     try {
@@ -55,8 +69,9 @@ export default function ScheduleScreen() {
   }, [dateStr]);
 
   useEffect(() => {
+    if (!me) return;
     loadSchedules();
-  }, [loadSchedules]);
+  }, [me, loadSchedules]);
 
   return (
     <ScrollView
@@ -99,7 +114,7 @@ export default function ScheduleScreen() {
                 <View style={styles.vehicleIcon}>
                   {schedule.vehicle?.image_url ? (
                     <Image
-                      source={{ uri: getMediaUrl(schedule.vehicle.image_url) }}
+                      source={getMediaSource(schedule.vehicle.image_url)}
                       style={styles.vehicleImage}
                     />
                   ) : (

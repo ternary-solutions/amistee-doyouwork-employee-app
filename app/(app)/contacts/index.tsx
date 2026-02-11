@@ -18,6 +18,7 @@ import type { Type } from '@/types/types';
 import type { User } from '@/types/users';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -89,6 +90,13 @@ export default function ContactsListScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Contacts', showBack: false }),
+      []
+    )
+  );
 
   const sections = useMemo(() => groupUsersByLetter(users), [users]);
   const letters = useMemo(() => sections.map((s) => s.letter), [sections]);

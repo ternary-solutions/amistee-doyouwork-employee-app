@@ -1,5 +1,4 @@
 import { useMainStore } from '@/store/main';
-import { getStoredLocationId } from '@/store/main';
 import type { ApiRequestOptions, RefreshTokenResponse } from '@/types/auth';
 import type { User } from '@/types/users';
 import { UserRoleMap } from '@/utils/enum';
@@ -29,21 +28,7 @@ export const getWebSocketNotificationsBaseUrl = (): string => {
     .replace(/^https:/i, 'wss:');
 };
 
-/** Placeholder image when no URL is provided (avatar, vehicle, etc.). */
-const PLACEHOLDER_IMAGE_URI =
-  'data:image/svg+xml,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="#e2e8f0"/><text x="50" y="55" text-anchor="middle" fill="#64748b" font-size="36" font-family="system-ui,sans-serif">?</text></svg>'
-  );
-
-/** Full URL for a media file (avatar, vehicle image, etc.). Returns placeholder when url is empty. */
-export const getMediaUrl = (url: string | null | undefined): string => {
-  if (!url) return PLACEHOLDER_IMAGE_URI;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  const baseUrl = getBaseUrl(false).replace(/\/$/, '');
-  if (url.startsWith('/media/serve/')) return `${baseUrl}${url}`;
-  return `${baseUrl}/media/serve?path=${encodeURIComponent(url)}`;
-};
+export { getMediaUrl, getMediaSource } from '@/utils/mediaSource';
 
 async function refreshAccessToken(): Promise<RefreshTokenResponse> {
   const BASE_URL = getBaseUrl(true);
@@ -59,10 +44,12 @@ async function refreshAccessToken(): Promise<RefreshTokenResponse> {
       { refresh_token: refreshToken }
     );
     await tokenStorage.setAccessToken(data.access_token);
+    useMainStore.getState().setAccessToken(data.access_token);
     return data;
   } catch (error: unknown) {
     console.error('[refreshAccessToken] Error refreshing token:', error);
     await tokenStorage.clearAll();
+    useMainStore.getState().setAccessToken(null);
     throw new Error('Session expired. Please log in again.');
   }
 }
@@ -163,13 +150,11 @@ async function applyAuthResponse(data: LoginResponse): Promise<void> {
   await tokenStorage.setAccessToken(data.access_token);
   await tokenStorage.setRefreshToken(data.refresh_token);
   await tokenStorage.setRole(data.user.role);
+  useMainStore.getState().setAccessToken(data.access_token);
 
-  const storedLocationId = await getStoredLocationId();
-  const initialLocationId =
-    storedLocationId && data.user.location_ids?.includes(storedLocationId)
-      ? storedLocationId
-      : data.user.location_ids?.[0] || data.user.location_id;
-  useMainStore.getState().setCurrentLocationId(initialLocationId ?? null);
+  // All employees are single location; use the user's location only
+  const locationId = data.user.location_id ?? data.user.location_ids?.[0] ?? null;
+  useMainStore.getState().setCurrentLocationId(locationId);
   useMainStore.getState().setMe(data.user);
   useMainStore.getState().setRole(data.user.role);
 }
@@ -211,6 +196,7 @@ export async function logout(): Promise<void> {
   await tokenStorage.clearAll();
   useMainStore.getState().setMe(null);
   useMainStore.getState().setRole(null);
+  useMainStore.getState().setAccessToken(null);
   useMainStore.getState().setUsers([]);
   useMainStore.getState().setEmployees([]);
   useMainStore.getState().setLocations([]);
@@ -229,6 +215,9 @@ export async function fetchMe(): Promise<User> {
   if (data.location_ids) {
     useMainStore.getState().setLocationIds(data.location_ids);
   }
+  // All employees are single location; keep currentLocationId in sync with user
+  const locationId = data.location_id ?? data.location_ids?.[0] ?? null;
+  useMainStore.getState().setCurrentLocationId(locationId);
   useMainStore.getState().setMe(data);
   useMainStore.getState().setRole(data.role);
 

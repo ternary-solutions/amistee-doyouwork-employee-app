@@ -1,8 +1,17 @@
-import { border, card, foreground, primary, primaryForeground, radius, spacing, typography } from '@/constants/theme';
-import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { AnimatedPressable } from './AnimatedPressable';
+import {
+  border,
+  card,
+  foreground,
+  primary,
+  primaryForeground,
+  radius,
+  spacing,
+  typography,
+} from "@/constants/theme";
+import { BottomSheetModal, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { useCallback, useEffect, useRef } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { AnimatedPressable } from "./AnimatedPressable";
 
 type FormModalProps = {
   visible: boolean;
@@ -25,16 +34,16 @@ export function FormModal({
   onClose,
   title,
   children,
-  submitLabel = 'Submit',
+  submitLabel = "Submit",
   submitting = false,
   submitDisabled = false,
   onSubmit,
-  contentMaxHeight = '80%',
+  contentMaxHeight = "80%",
   initialSnapIndex = 1,
 }: FormModalProps) {
   const disabled = submitting || submitDisabled;
   const bottomSheetRef = useRef<BottomSheetModal>(null);
-  const snapPoints = ['50%', contentMaxHeight === '85%' ? '85%' : '80%'];
+  const snapPoints = ["50%", contentMaxHeight === "85%" ? "85%" : "80%"];
 
   const handleDismiss = useCallback(() => {
     onClose();
@@ -82,10 +91,12 @@ export function FormModal({
             style={[styles.submitBtn, disabled && styles.submitBtnDisabled]}
             onPress={onSubmit}
             disabled={disabled}
-            accessibilityLabel={submitting ? 'Submitting' : submitLabel}
+            accessibilityLabel={submitting ? "Submitting" : submitLabel}
             accessibilityRole="button"
           >
-            <Text style={styles.submitBtnText}>{submitting ? 'Submitting...' : submitLabel}</Text>
+            <Text style={styles.submitBtnText}>
+              {submitting ? "Submitting..." : submitLabel}
+            </Text>
           </AnimatedPressable>
         </View>
       </View>
@@ -108,26 +119,30 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   bodyContent: { paddingBottom: spacing.xl },
   actions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
     marginTop: spacing.base,
+    alignItems: "center",
+    justifyContent: "flex-end",
   },
   cancelBtn: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    alignItems: "center",
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: border,
   },
-  cancelBtnText: { fontSize: 16, fontWeight: '500', color: foreground },
+  cancelBtnText: { fontSize: 16, fontWeight: "500", color: foreground },
   submitBtn: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    alignItems: "center",
     borderRadius: radius.sm,
     backgroundColor: primary,
   },
   submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: { color: primaryForeground, fontSize: 16, fontWeight: '600' },
+  submitBtnText: { color: primaryForeground, fontSize: 16, fontWeight: "600" },
 });

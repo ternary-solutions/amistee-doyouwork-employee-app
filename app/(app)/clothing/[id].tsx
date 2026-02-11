@@ -14,8 +14,9 @@ import {
 import { clothingRequestsService } from '@/services/requests/clothings';
 import type { ClothingRequest } from '@/types/requests/clothings';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -38,6 +39,13 @@ export default function ClothingRequestDetailScreen() {
   const insets = useSafeAreaInsets();
   const [request, setRequest] = useState<ClothingRequest | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Clothing Request', showBack: true }),
+      [],
+    ),
+  );
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -74,6 +82,10 @@ export default function ClothingRequestDetailScreen() {
   }
 
   const statusColor = STATUS_COLORS[request.status] ?? mutedForeground;
+  const hasObjects = request.requested_objects && request.requested_objects.length > 0;
+  const title = hasObjects
+    ? request.requested_objects!.map((o) => (o.size ? `${o.name} (${o.size})` : o.name)).join(', ')
+    : (request.clothing_type_name ?? 'Clothing Request');
 
   return (
     <ScrollView
@@ -83,20 +95,35 @@ export default function ClothingRequestDetailScreen() {
     >
       <View style={styles.card}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>{request.clothing_type_name ?? 'Clothing Request'}</Text>
+          <Text style={styles.title}>{title}</Text>
           <View style={[styles.badge, { backgroundColor: statusColor }]}>
             <Text style={styles.badgeText}>{request.status}</Text>
           </View>
         </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Quantity</Text>
-          <Text style={styles.detailValue}>{request.quantity}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Size</Text>
-          <Text style={styles.detailValue}>{request.size}</Text>
-        </View>
+        {hasObjects ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Requested items</Text>
+            <Text style={styles.detailValue}>
+              {request.requested_objects!.map((o) => (o.size ? `${o.name} (${o.size})` : o.name)).join(', ')}
+            </Text>
+          </View>
+        ) : (
+          <>
+            {request.quantity != null && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Quantity</Text>
+                <Text style={styles.detailValue}>{request.quantity}</Text>
+              </View>
+            )}
+            {request.size && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Size</Text>
+                <Text style={styles.detailValue}>{request.size}</Text>
+              </View>
+            )}
+          </>
+        )}
         {request.reason ? (
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Reason</Text>

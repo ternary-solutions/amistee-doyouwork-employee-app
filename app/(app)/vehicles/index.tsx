@@ -15,9 +15,10 @@ import {
     typography,
 } from '@/constants/theme';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { vehiclesService } from '@/services/vehicles';
 import type { Vehicle } from '@/types/vehicles';
-import { getMediaUrl } from '@/utils/api';
+import { getMediaSource } from '@/utils/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { hapticImpact } from '@/utils/haptics';
 import { useRouter } from 'expo-router';
@@ -73,6 +74,13 @@ export default function VehiclesListScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Vehicles', showBack: false }),
+      []
+    )
+  );
 
   const renderHeader = () => (
     <View style={styles.filterWrap}>
@@ -154,7 +162,7 @@ export default function VehiclesListScreen() {
         >
           <View style={styles.cardInner}>
             {item.photo_url ? (
-              <Image source={{ uri: getMediaUrl(item.photo_url) }} style={styles.cardThumb} />
+              <Image source={getMediaSource(item.photo_url)} style={styles.cardThumb} />
             ) : (
               <View style={styles.cardThumbPlaceholder}>
                 <Text style={styles.cardThumbEmoji}>🚗</Text>

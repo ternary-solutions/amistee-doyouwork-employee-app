@@ -1,14 +1,10 @@
-import { DashboardHero } from '@/components/dashboard/DashboardHero';
-import { DashboardNotifications } from '@/components/dashboard/DashboardNotifications';
-import { UpcomingVacationCard } from '@/components/dashboard/UpcomingVacationCard';
-import { WeekDaySelector } from '@/components/dashboard/WeekDaySelector';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { SkeletonScheduleCard } from '@/components/ui/Skeleton';
-import { scheduleService } from '@/services/schedules';
-import type { MyScheduleResponse } from '@/types/schedules';
-import { getMediaUrl } from '@/utils/api';
-import { getErrorMessage } from '@/utils/errorMessage';
+import { DashboardHero } from "@/components/dashboard/DashboardHero";
+import { DashboardNotifications } from "@/components/dashboard/DashboardNotifications";
+import { UpcomingVacationCard } from "@/components/dashboard/UpcomingVacationCard";
+import { WeekDaySelector } from "@/components/dashboard/WeekDaySelector";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { SkeletonScheduleCard } from "@/components/ui/Skeleton";
 import {
   accent,
   accentForeground,
@@ -19,11 +15,16 @@ import {
   mutedForeground,
   spacing,
   typography,
-} from '@/constants/theme';
-import { format } from 'date-fns';
-import { useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+} from "@/constants/theme";
+import { scheduleService } from "@/services/schedules";
+import { useMainStore } from "@/store/main";
+import type { MyScheduleResponse } from "@/types/schedules";
+import { getErrorMessage } from "@/utils/errorMessage";
+import { getMediaSource } from "@/utils/mediaSource";
+import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import { useNavigation, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -32,19 +33,20 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
+} from "react-native";
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const router = useRouter();
+  const me = useMainStore((s) => s.me);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [schedules, setSchedules] = useState<MyScheduleResponse[]>([]);
-  const dateStr = format(selectedDate, 'yyyy-MM-dd');
+  const dateStr = format(selectedDate, "yyyy-MM-dd");
 
   const openDrawer = () => {
     const nav = navigation as unknown as { openDrawer?: () => void };
-    if (typeof nav.openDrawer === 'function') nav.openDrawer();
+    if (typeof nav.openDrawer === "function") nav.openDrawer();
   };
 
   const loadSchedules = useCallback(async () => {
@@ -53,16 +55,20 @@ export default function DashboardScreen() {
       const res = await scheduleService.getMySchedule(dateStr);
       setSchedules(res.filter((s) => s && s.vehicle !== undefined));
     } catch (error) {
-      console.error('Failed to load schedules', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to load schedule. Please try again.'));
+      console.error("Failed to load schedules", error);
+      Alert.alert(
+        "Error",
+        getErrorMessage(error, "Failed to load schedule. Please try again."),
+      );
     } finally {
       setLoading(false);
     }
   }, [dateStr]);
 
   useEffect(() => {
+    if (!me) return;
     loadSchedules();
-  }, [loadSchedules]);
+  }, [me, loadSchedules]);
 
   return (
     <View style={styles.container}>
@@ -79,13 +85,16 @@ export default function DashboardScreen() {
           />
         }
       >
-        <WeekDaySelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
+        <WeekDaySelector
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
 
         <View style={styles.body}>
           <DashboardNotifications />
 
           <Text style={styles.sectionTitle}>Schedule</Text>
-          {loading && schedules.length === 0 ? (
+          {!me || (loading && schedules.length === 0) ? (
             <View style={styles.skeletonWrap}>
               <SkeletonScheduleCard />
               <SkeletonScheduleCard />
@@ -94,7 +103,7 @@ export default function DashboardScreen() {
           ) : schedules.length === 0 ? (
             <Card>
               <Text style={styles.emptyText}>
-                No schedule for {format(selectedDate, 'MMMM d, yyyy')}.
+                No schedule for {format(selectedDate, "MMMM d, yyyy")}.
               </Text>
             </Card>
           ) : (
@@ -103,18 +112,17 @@ export default function DashboardScreen() {
               .map((schedule) => (
                 <Card
                   key={
-                    schedule.id ||
-                    `schedule-${schedule.vehicle?.id}-${dateStr}`
+                    schedule.id || `schedule-${schedule.vehicle?.id}-${dateStr}`
                   }
                   style={styles.scheduleCard}
-                  accessibilityLabel={`Schedule for ${schedule.vehicle?.vehicle_name || 'Unknown vehicle'}, ${format(selectedDate, 'MMMM d, yyyy')}`}
+                  accessibilityLabel={`Schedule for ${schedule.vehicle?.vehicle_name || "Unknown vehicle"}, ${format(selectedDate, "MMMM d, yyyy")}`}
                   accessibilityRole="summary"
                 >
                   <View style={styles.vehicleRow}>
                     <View style={styles.vehicleIcon}>
                       {schedule.vehicle?.image_url ? (
                         <Image
-                          source={{ uri: getMediaUrl(schedule.vehicle.image_url) }}
+                          source={getMediaSource(schedule.vehicle.image_url)}
                           style={styles.vehicleImage}
                         />
                       ) : (
@@ -122,19 +130,33 @@ export default function DashboardScreen() {
                       )}
                     </View>
                     <Text style={styles.vehicleName}>
-                      {schedule.vehicle?.vehicle_name || 'Unknown Vehicle'}
+                      {schedule.vehicle?.vehicle_name || "Unknown Vehicle"}
                     </Text>
                   </View>
                   <View style={styles.membersBlock}>
                     {schedule.assigned_employees.map((member) => (
                       <View key={member.id} style={styles.memberRow}>
                         <View style={styles.memberIcon}>
-                          <Text style={styles.memberIconText}>👤</Text>
+                          {member.photo_url ? (
+                            <Image
+                              source={getMediaSource(member.photo_url)}
+                              style={styles.memberImage}
+                            />
+                          ) : (
+                            <Text style={styles.memberIconText}>
+                              {[member.first_name, member.last_name]
+                                .filter(Boolean)
+                                .map((n) => (n ?? "")[0])
+                                .join("")
+                                .toUpperCase()
+                                .slice(0, 2) || "?"}
+                            </Text>
+                          )}
                         </View>
                         <Text style={styles.memberName}>
                           {[member.first_name, member.last_name]
                             .filter(Boolean)
-                            .join(' ')}
+                            .join(" ")}
                         </Text>
                       </View>
                     ))}
@@ -147,7 +169,7 @@ export default function DashboardScreen() {
                         !schedule.notes && styles.notesPlaceholder,
                       ]}
                     >
-                      {schedule.notes || 'No notes'}
+                      {schedule.notes || "No notes"}
                     </Text>
                   </View>
                 </Card>
@@ -159,13 +181,18 @@ export default function DashboardScreen() {
             <Button
               variant="accent"
               pill
-              onPress={() => router.push('/(app)/time-off')}
+              onPress={() => router.push("/(app)/time-off")}
               accessibilityLabel="Request time off"
               accessibilityRole="button"
             >
               <View style={styles.ctaBtnContent}>
                 <Text style={styles.ctaBtnText}>Request Time Off</Text>
-                <Ionicons name="add" size={20} color={accentForeground} style={styles.ctaBtnIcon} />
+                <Ionicons
+                  name="add"
+                  size={20}
+                  color={accentForeground}
+                  style={styles.ctaBtnIcon}
+                />
               </View>
             </Button>
           </View>
@@ -197,9 +224,10 @@ const styles = StyleSheet.create({
     ...typography.sectionTitle,
     color: foreground,
     marginBottom: spacing.lg,
+    marginTop: spacing.lg,
   },
   loaderWrap: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: spacing.lg,
   },
   skeletonWrap: {
@@ -208,14 +236,14 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: mutedForeground,
-    textAlign: 'center',
+    textAlign: "center",
   },
   scheduleCard: {
     marginBottom: spacing.base,
   },
   vehicleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
     marginBottom: spacing.md,
   },
@@ -224,20 +252,20 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: muted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   vehicleImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   vehicleIconText: {
     fontSize: 20,
   },
   vehicleName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: foreground,
     flex: 1,
   },
@@ -246,8 +274,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.md,
     backgroundColor: muted,
     paddingVertical: 8,
@@ -260,15 +288,22 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  memberImage: {
+    width: "100%",
+    height: "100%",
   },
   memberIconText: {
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: "600",
+    color: mutedForeground,
   },
   memberName: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     color: foreground,
   },
   notesBlock: {
@@ -285,19 +320,19 @@ const styles = StyleSheet.create({
   },
   notesPlaceholder: {
     color: mutedForeground,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   ctaBtnWrap: {
     marginBottom: spacing.md,
   },
   ctaBtnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   ctaBtnText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: accentForeground,
   },
   ctaBtnIcon: {

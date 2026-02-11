@@ -15,8 +15,9 @@ import { timeOffRequestsService } from '@/services/requests/timeOffs';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { toast as showToast } from '@/utils/toast';
 import type { TimeOffRequest } from '@/types/requests/timeOffs';
-import { format } from 'date-fns';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { addDays, format, startOfDay } from 'date-fns';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,7 +31,6 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -46,8 +46,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 type Filter = 'open' | 'closed';
 
+function getTodayYMD(): string {
+  return format(startOfDay(new Date()), 'yyyy-MM-dd');
+}
+
 export default function TimeOffScreen() {
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,8 +63,12 @@ export default function TimeOffScreen() {
   const [showEndPicker, setShowEndPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const startDateObj = startDate ? new Date(startDate + 'T12:00:00') : new Date();
-  const endDateObj = endDate ? new Date(endDate + 'T12:00:00') : new Date();
+  const todayYMD = getTodayYMD();
+  const startDateObj = startDate ? new Date(startDate + 'T12:00:00') : new Date(todayYMD + 'T12:00:00');
+  const endDateObj = endDate ? new Date(endDate + 'T12:00:00') : new Date(todayYMD + 'T12:00:00');
+  const minStartDate = startOfDay(new Date());
+  const minEndDate = startDate ? startOfDay(new Date(startDate + 'T12:00:00')) : minStartDate;
+  const maxEndDate = startDate ? addDays(new Date(startDate + 'T12:00:00'), 365) : addDays(new Date(), 365);
 
   const filteredRequests = requests.filter((r) =>
     filter === 'open' ? r.status === 'Pending' : r.status === 'Approved' || r.status === 'Denied'
@@ -84,11 +91,32 @@ export default function TimeOffScreen() {
     load();
   }, [load]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerAction: { label: 'New time off request', onPress: () => setModalOpen(true) },
-    });
-  }, [navigation]);
+  // Prefill start/end to today when opening the modal
+  useEffect(() => {
+    if (modalOpen && !startDate && !endDate) {
+      setStartDate(todayYMD);
+      setEndDate(todayYMD);
+    }
+  }, [modalOpen, startDate, endDate, todayYMD]);
+
+  // Keep end >= start when start changes
+  useEffect(() => {
+    if (startDate && endDate && endDate < startDate) {
+      setEndDate(startDate);
+    }
+  }, [startDate, endDate]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({
+        title: 'Time Off',
+        subtitle: 'Request vacation, sick, or personal time off.',
+        showBack: false,
+        headerAction: { label: 'New time off request', onPress: () => setModalOpen(true) },
+      }),
+      []
+    )
+  );
 
   const handleCreate = async () => {
     if (!startDate.trim() || !endDate.trim()) return;
@@ -98,6 +126,8 @@ export default function TimeOffScreen() {
       setModalOpen(false);
       setStartDate('');
       setEndDate('');
+      setShowStartPicker(false);
+      setShowEndPicker(false);
       showToast.success('Time off request submitted.');
       load();
     } catch (error) {
@@ -190,9 +220,14 @@ export default function TimeOffScreen() {
             value={startDateObj}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={minStartDate}
             onChange={(_, date) => {
               setShowStartPicker(Platform.OS === 'android');
-              if (date) setStartDate(format(date, 'yyyy-MM-dd'));
+              if (date) {
+                const ymd = format(date, 'yyyy-MM-dd');
+                setStartDate(ymd);
+                if (endDate && endDate < ymd) setEndDate(ymd);
+              }
             }}
           />
         )}
@@ -205,6 +240,8 @@ export default function TimeOffScreen() {
             value={endDateObj}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            minimumDate={minEndDate}
+            maximumDate={maxEndDate}
             onChange={(_, date) => {
               setShowEndPicker(Platform.OS === 'android');
               if (date) setEndDate(format(date, 'yyyy-MM-dd'));

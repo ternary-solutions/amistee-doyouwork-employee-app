@@ -13,8 +13,9 @@ import {
 import { notificationsService } from '@/services/notifications';
 import type { Notification } from '@/types/notifications';
 import { format } from 'date-fns';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -46,6 +47,13 @@ export default function NotificationDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Notification', showBack: true }),
+      [],
+    ),
+  );
 
   if (loading) {
     return (

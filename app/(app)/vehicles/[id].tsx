@@ -17,11 +17,12 @@ import { repairRequestsService } from '@/services/requests/repairs';
 import { vehiclesService } from '@/services/vehicles';
 import type { RepairPriority, RepairRequest } from '@/types/requests/repairs';
 import type { Vehicle } from '@/types/vehicles';
-import { getMediaUrl } from '@/utils/api';
+import { getMediaSource } from '@/utils/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Ionicons } from '@expo/vector-icons';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -57,7 +58,7 @@ export default function VehicleDetailScreen() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [requests, setRequests] = useState<RepairRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'requests' | 'details'>('requests');
+  const [tab, setTab] = useState<'requests' | 'details'>('details');
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createDescription, setCreateDescription] = useState('');
   const [createPriority, setCreatePriority] = useState<RepairPriority>('Medium');
@@ -85,6 +86,13 @@ export default function VehicleDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Vehicle', showBack: true }),
+      []
+    )
+  );
 
   const handleCreateRequest = async () => {
     const desc = createDescription.trim();
@@ -134,7 +142,7 @@ export default function VehicleDetailScreen() {
         <Text style={styles.headerTitle}>{vehicle.vehicle_name}</Text>
         <View style={styles.photoWrap}>
           {vehicle.photo_url ? (
-            <Image source={{ uri: getMediaUrl(vehicle.photo_url) }} style={styles.photo} />
+            <Image source={getMediaSource(vehicle.photo_url)} style={styles.photo} />
           ) : (
             <View style={styles.photoPlaceholder}>
               <Ionicons name="car" size={40} color={mutedForeground} />
@@ -154,50 +162,30 @@ export default function VehicleDetailScreen() {
         <Text style={styles.newRequestBtnText}>New Request</Text>
       </Pressable>
 
-      {/* Tabs */}
+      {/* Tabs - Details first */}
       <View style={styles.tabRow}>
-        <Pressable
-          style={[styles.tab, tab === 'requests' && styles.tabActive]}
-          onPress={() => setTab('requests')}
-        >
-          <Text style={[styles.tabText, tab === 'requests' && styles.tabTextActive]}>Requests</Text>
-        </Pressable>
         <Pressable
           style={[styles.tab, tab === 'details' && styles.tabActive]}
           onPress={() => setTab('details')}
         >
           <Text style={[styles.tabText, tab === 'details' && styles.tabTextActive]}>Details</Text>
         </Pressable>
+        <Pressable
+          style={[styles.tab, tab === 'requests' && styles.tabActive]}
+          onPress={() => setTab('requests')}
+        >
+          <Text style={[styles.tabText, tab === 'requests' && styles.tabTextActive]}>Requests</Text>
+        </Pressable>
       </View>
 
-      {tab === 'requests' ? (
-        requests.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No maintenance requests yet.</Text>
-            <Text style={styles.emptyHint}>Tap the + button to create one.</Text>
-          </View>
-        ) : (
-          <View style={styles.requestsList}>
-            {requests.map((r) => (
-              <AnimatedPressable
-                key={r.id}
-                style={styles.card}
-                onPress={() => router.push(`/(app)/vehicles/${id}/requests/${r.id}`)}
-                accessibilityLabel={`${r.description}, ${r.status}, view details`}
-                accessibilityRole="button"
-              >
-                <Text style={styles.cardTitle} numberOfLines={1}>{r.description}</Text>
-                <Text style={styles.meta}>
-                  {new Date(r.request_date).toLocaleDateString()} · {r.status} · {r.priority}
-                </Text>
-              </AnimatedPressable>
-            ))}
-          </View>
-        )
-      ) : (
+      {tab === 'details' ? (
         <View style={styles.detailsCard}>
           <DetailRow label="License Plate" value={vehicle.license_plate} />
           <DetailRow label="VIN" value={vehicle.vin} />
+          <DetailRow label="Vehicle Type" value={vehicle.vehicle_type?.name ?? '—'} />
+          {vehicle.vehicle_type?.description ? (
+            <DetailRow label="Type Description" value={vehicle.vehicle_type.description} />
+          ) : null}
           <DetailRow
             label="Status"
             value={
@@ -212,13 +200,17 @@ export default function VehicleDetailScreen() {
           />
           {(vehicle.make || vehicle.model || vehicle.year) && (
             <DetailRow
-              label="Vehicle"
+              label="Make / Model / Year"
               value={[vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ') || '—'}
             />
           )}
           {vehicle.location?.name && (
             <DetailRow label="Location" value={vehicle.location.name} />
           )}
+          <DetailRow
+            label="Added"
+            value={vehicle.created_at ? new Date(vehicle.created_at).toLocaleDateString() : '—'}
+          />
           <View style={styles.docSection}>
             <Text style={styles.docLabel}>Documents</Text>
             {vehicle.insurance_doc ? (
@@ -244,7 +236,31 @@ export default function VehicleDetailScreen() {
             )}
           </View>
         </View>
-      )}
+      ) : tab === 'requests' ? (
+        requests.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No maintenance requests yet.</Text>
+            <Text style={styles.emptyHint}>Tap the + button to create one.</Text>
+          </View>
+        ) : (
+          <View style={styles.requestsList}>
+            {requests.map((r) => (
+              <AnimatedPressable
+                key={r.id}
+                style={styles.card}
+                onPress={() => router.push(`/(app)/vehicles/${id}/requests/${r.id}`)}
+                accessibilityLabel={`${r.description}, ${r.status}, view details`}
+                accessibilityRole="button"
+              >
+                <Text style={styles.cardTitle} numberOfLines={1}>{r.description}</Text>
+                <Text style={styles.meta}>
+                  {new Date(r.request_date).toLocaleDateString()} · {r.status} · {r.priority}
+                </Text>
+              </AnimatedPressable>
+            ))}
+          </View>
+        )
+      ) : null}
 
       <DocumentViewerModal
         visible={!!docViewer}

@@ -1,5 +1,6 @@
 import { AppHeader } from '@/components/layout/AppHeader';
 import { CustomDrawerContent } from '@/components/layout/DrawerContent';
+import { useHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import type { DrawerNavigationOptions } from '@react-navigation/drawer';
 import { Drawer } from 'expo-router/drawer';
 
@@ -7,9 +8,25 @@ import { Drawer } from 'expo-router/drawer';
 type AppScreenOptions = DrawerNavigationOptions & {
   title?: string;
   subtitle?: string;
+  breadcrumbs?: string[];
   headerAction?: { label: string; onPress: () => void };
   showBack?: boolean;
 };
+
+function AppHeaderWithContext(props: { options?: AppScreenOptions; [key: string]: unknown }) {
+  const contextOpts = useHeaderOptions();
+  const opts = props.options as AppScreenOptions | undefined;
+  return (
+    <AppHeader
+      {...props}
+      title={contextOpts?.title ?? opts?.title}
+      subtitle={contextOpts?.subtitle ?? opts?.subtitle}
+      breadcrumbs={contextOpts?.breadcrumbs ?? opts?.breadcrumbs}
+      headerAction={contextOpts?.headerAction ?? opts?.headerAction}
+      showBack={contextOpts?.showBack ?? opts?.showBack}
+    />
+  );
+}
 
 export default function AppLayout() {
   return (
@@ -19,16 +36,7 @@ export default function AppLayout() {
         drawerStyle: { width: '85%', maxWidth: 360 },
         headerShown: true,
         header: (props) => {
-          const opts = props.options as AppScreenOptions | undefined;
-          return (
-            <AppHeader
-              {...props}
-              title={opts?.title}
-              subtitle={opts?.subtitle}
-              headerAction={opts?.headerAction}
-              showBack={opts?.showBack}
-            />
-          );
+          return <AppHeaderWithContext {...props} />;
         },
         headerShadowVisible: false,
         headerStyle: { backgroundColor: 'transparent' },

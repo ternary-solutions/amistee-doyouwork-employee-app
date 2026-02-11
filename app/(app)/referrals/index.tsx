@@ -10,8 +10,9 @@ import {
 import { partnerCompaniesService } from '@/services/partnerCompanies';
 import type { PartnerCompany } from '@/types/partnerCompanies';
 import * as Clipboard from 'expo-clipboard';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -50,6 +51,13 @@ export default function ReferralsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Partner Companies', showBack: false }),
+      [],
+    ),
+  );
 
   const load = useCallback(async () => {
     try {
@@ -211,7 +219,7 @@ export default function ReferralsScreen() {
 const styles = StyleSheet.create({
   skeletonContainer: { flex: 1, backgroundColor: background },
   skeletonWrap: { padding: spacing.base },
-  header: { paddingHorizontal: spacing.base, paddingBottom: spacing.md },
+  header: { paddingHorizontal: spacing.base, paddingTop: spacing.base, paddingBottom: spacing.md },
   searchInput: {
     borderWidth: 1,
     borderColor: border,

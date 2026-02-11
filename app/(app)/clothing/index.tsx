@@ -1,7 +1,7 @@
-import { EmptyState } from '@/components/ui/EmptyState';
-import { SkeletonListCard } from '@/components/ui/Skeleton';
-import { FormModal } from '@/components/ui/FormModal';
-import { ListCard } from '@/components/ui/ListCard';
+import { EmptyState } from "@/components/ui/EmptyState";
+import { FormModal } from "@/components/ui/FormModal";
+import { ListCard } from "@/components/ui/ListCard";
+import { SkeletonListCard } from "@/components/ui/Skeleton";
 import {
     background,
     border,
@@ -14,12 +14,18 @@ import {
     radius,
     spacing,
     success,
-} from '@/constants/theme';
-import { clothingRequestsService } from '@/services/requests/clothings';
-import { getErrorMessage } from '@/utils/errorMessage';
-import type { ClothingRequest } from '@/types/requests/clothings';
-import { useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+} from "@/constants/theme";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { clothingRequestsService } from "@/services/requests/clothings";
+import type {
+    ClothingObject,
+    ClothingRequest,
+    ClothingSize,
+} from "@/types/requests/clothings";
+import { getErrorMessage } from "@/utils/errorMessage";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
     Alert,
     FlatList,
@@ -29,8 +35,23 @@ import {
     Text,
     TextInput,
     View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const CLOTHING_SIZE_OPTIONS: ClothingSize[] = [
+  "XS",
+  "S",
+  "M",
+  "L",
+  "XL",
+  "XXL",
+  "XXXL",
+  "One Size",
+  "30x30",
+  "32x32",
+  "34x32",
+  "36x32",
+];
 
 const STATUS_COLORS: Record<string, string> = {
   Pending: mutedForeground,
@@ -38,33 +59,44 @@ const STATUS_COLORS: Record<string, string> = {
   Denied: destructive,
   Completed: primary,
 };
-const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'One Size'] as const;
+
+function formatRequestTitle(request: ClothingRequest): string {
+  if (request.requested_objects?.length) {
+    return request.requested_objects
+      .map((o) => (o.size ? `${o.name} (${o.size})` : o.name))
+      .join(", ");
+  }
+  if (request.clothing_type_name) {
+    const qty = request.quantity != null ? request.quantity : 1;
+    const sz = request.size ? ` · ${request.size}` : "";
+    return `${request.clothing_type_name} × ${qty}${sz}`;
+  }
+  return "Clothing request";
+}
 
 export default function ClothingScreen() {
-  const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [requests, setRequests] = useState<ClothingRequest[]>([]);
-  const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
+  const [objects, setObjects] = useState<ClothingObject[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
-  const [typeId, setTypeId] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [size, setSize] = useState<string>('M');
-  const [reason, setReason] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [size, setSize] = useState<ClothingSize>("One Size");
+  const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [listRes, typesRes] = await Promise.all([
+      const [listRes, objectsRes] = await Promise.all([
         clothingRequestsService.list(1, 50),
-        clothingRequestsService.listTypes(),
+        clothingRequestsService.listObjects(),
       ]);
       setRequests(listRes?.items ?? []);
-      setTypes(typesRes?.map((t) => ({ id: t.id, name: t.name })) ?? []);
+      setObjects(objectsRes ?? []);
     } catch (error) {
-      console.error('Failed to load clothing requests', error);
+      console.error("Failed to load clothing requests", error);
     } finally {
       setLoading(false);
     }
@@ -74,31 +106,52 @@ export default function ClothingScreen() {
     load();
   }, [load]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerAction: { label: 'New clothing request', onPress: () => setModalOpen(true) },
+  useSetHeaderOptions(
+    useMemo(
+      () => ({
+        title: "Clothing Requests",
+        subtitle: "Request work clothing and uniforms.",
+        showBack: false,
+        headerAction: {
+          label: "New clothing request",
+          onPress: () => setModalOpen(true),
+        },
+      }),
+      [],
+    ),
+  );
+
+  const toggleObject = (objectId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(objectId)) next.delete(objectId);
+      else next.add(objectId);
+      return next;
     });
-  }, [navigation]);
+  };
 
   const handleCreate = async () => {
-    if (!typeId || !quantity.trim() || !size) return;
-    const qty = parseInt(quantity, 10);
-    if (!Number.isFinite(qty) || qty < 1) return;
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
     try {
       setSubmitting(true);
       await clothingRequestsService.create({
-        clothing_type_id: typeId,
-        quantity: qty,
-        size: size as ClothingRequest['size'],
+        clothing_object_ids: ids,
+        size,
         reason: reason.trim() || undefined,
       });
       setModalOpen(false);
-      setTypeId('');
-      setQuantity('');
-      setReason('');
+      setSelectedIds(new Set());
+      setReason("");
       load();
     } catch (error) {
-      Alert.alert('Error', getErrorMessage(error, 'Failed to submit clothing request. Please try again.'));
+      Alert.alert(
+        "Error",
+        getErrorMessage(
+          error,
+          "Failed to submit clothing request. Please try again.",
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -106,7 +159,12 @@ export default function ClothingScreen() {
 
   if (loading && requests.length === 0) {
     return (
-      <View style={[styles.skeletonContainer, { paddingBottom: spacing.xl + insets.bottom }]}>
+      <View
+        style={[
+          styles.skeletonContainer,
+          { paddingBottom: spacing.xl + insets.bottom },
+        ]}
+      >
         <View style={styles.skeletonWrap}>
           <SkeletonListCard />
           <SkeletonListCard />
@@ -118,85 +176,199 @@ export default function ClothingScreen() {
     );
   }
 
+  const fabBottom = insets.bottom + spacing.base;
+
   return (
     <>
-      {requests.length === 0 ? (
-        <View style={[styles.fill, { paddingBottom: insets.bottom }]}>
-          <EmptyState
-            message="No clothing requests yet. Tap + to add one."
-            icon="shirt-outline"
-            action={{ label: 'Request clothing', onPress: () => setModalOpen(true) }}
+      <View style={styles.screenWrap}>
+        {requests.length === 0 ? (
+          <View style={[styles.fill, { paddingBottom: 72 + insets.bottom }]}>
+            <EmptyState
+              message="No clothing requests yet."
+              icon="shirt-outline"
+              action={{
+                label: "Request clothing",
+                onPress: () => setModalOpen(true),
+              }}
+            />
+          </View>
+        ) : (
+          <FlatList
+            data={requests}
+            keyExtractor={(r) => r.id}
+            style={{ backgroundColor: background }}
+            contentContainerStyle={[
+              styles.list,
+              { paddingBottom: 72 + spacing.xl + insets.bottom },
+            ]}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading}
+                onRefresh={load}
+                tintColor={primary}
+              />
+            }
+            renderItem={({ item }) => (
+              <View style={styles.cardWrap}>
+                <ListCard
+                  title={formatRequestTitle(item)}
+                  meta={item.reason ? [item.reason] : undefined}
+                  badge={{
+                    text: item.status,
+                    backgroundColor:
+                      STATUS_COLORS[item.status] ?? mutedForeground,
+                  }}
+                  onPress={() => router.push(`/(app)/clothing/${item.id}`)}
+                />
+              </View>
+            )}
           />
-        </View>
-      ) : (
-        <FlatList
-          data={requests}
-          keyExtractor={(r) => r.id}
-          style={{ backgroundColor: background }}
-          contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
-          refreshControl={
-            <RefreshControl refreshing={loading} onRefresh={load} tintColor={primary} />
-          }
-          renderItem={({ item }) => (
-            <View style={styles.cardWrap}>
-              <ListCard
-                title={item.clothing_type_name ?? 'Clothing'}
-                meta={[`Qty: ${item.quantity} · Size: ${item.size}`]}
-                badge={{ text: item.status, backgroundColor: STATUS_COLORS[item.status] ?? mutedForeground }}
-                onPress={() => router.push(`/(app)/clothing/${item.id}`)}
-              >
-                {item.reason ? <Text style={styles.details} numberOfLines={2}>{item.reason}</Text> : null}
-              </ListCard>
-            </View>
-          )}
-        />
-      )}
+        )}
+        <Pressable
+          onPress={() => setModalOpen(true)}
+          style={({ pressed }) => [
+            styles.fab,
+            { bottom: fabBottom },
+            pressed && styles.pressed,
+          ]}
+          accessibilityLabel="New clothing request"
+        >
+          <Ionicons name="add" size={28} color={primaryForeground} />
+        </Pressable>
+      </View>
       <FormModal
         visible={modalOpen}
         onClose={() => setModalOpen(false)}
         title="New clothing request"
         submitLabel="Submit"
         submitting={submitting}
+        submitDisabled={selectedIds.size === 0}
         onSubmit={handleCreate}
         contentMaxHeight="85%"
       >
-        <Text style={styles.label}>Type</Text>
-        <View style={styles.picker}>
-          {types.map((t) => (
-            <Pressable key={t.id} style={[styles.pickerOption, typeId === t.id && styles.pickerOptionActive]} onPress={() => setTypeId(t.id)}>
-              <Text style={[styles.pickerOptionText, typeId === t.id && styles.pickerOptionTextActive]}>{t.name}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.label}>Quantity</Text>
-        <TextInput style={styles.input} value={quantity} onChangeText={setQuantity} placeholder="1" keyboardType="number-pad" />
         <Text style={styles.label}>Size</Text>
         <View style={styles.picker}>
-          {SIZES.map((s) => (
-            <Pressable key={s} style={[styles.pickerOption, size === s && styles.pickerOptionActive]} onPress={() => setSize(s)}>
-              <Text style={[styles.pickerOptionText, size === s && styles.pickerOptionTextActive]}>{s}</Text>
+          {CLOTHING_SIZE_OPTIONS.map((s) => (
+            <Pressable
+              key={s}
+              style={[
+                styles.pickerOption,
+                size === s && styles.pickerOptionActive,
+              ]}
+              onPress={() => setSize(s)}
+            >
+              <Text
+                style={[
+                  styles.pickerOptionText,
+                  size === s && styles.pickerOptionTextActive,
+                ]}
+              >
+                {s}
+              </Text>
             </Pressable>
           ))}
         </View>
+        <Text style={styles.label}>Select clothing</Text>
+        <Text style={styles.hint}>Choose one or more items to request.</Text>
+        <View style={styles.picker}>
+          {objects.map((obj) => {
+            const selected = selectedIds.has(obj.id);
+            const label = obj.size ? `${obj.name} (${obj.size})` : obj.name;
+            return (
+              <Pressable
+                key={obj.id}
+                style={[
+                  styles.pickerOption,
+                  selected && styles.pickerOptionActive,
+                ]}
+                onPress={() => toggleObject(obj.id)}
+              >
+                <Text
+                  style={[
+                    styles.pickerOptionText,
+                    selected && styles.pickerOptionTextActive,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {objects.length === 0 && !loading ? (
+          <Text style={styles.emptyObjects}>
+            No clothing items available to request.
+          </Text>
+        ) : null}
         <Text style={styles.label}>Reason (optional)</Text>
-        <TextInput style={styles.input} value={reason} onChangeText={setReason} placeholder="Reason" />
+        <TextInput
+          style={styles.input}
+          value={reason}
+          onChangeText={setReason}
+          placeholder="Reason"
+        />
       </FormModal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   skeletonContainer: { flex: 1, backgroundColor: background },
   skeletonWrap: { padding: spacing.base },
+  screenWrap: { flex: 1, backgroundColor: background },
   fill: { flex: 1, backgroundColor: background },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   cardWrap: { marginBottom: spacing.md },
+  fab: {
+    position: "absolute",
+    right: spacing.base,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: primary,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  pressed: { opacity: 0.85 },
   details: { fontSize: 13, color: mutedForeground, marginTop: 4 },
-  label: { fontSize: 14, fontWeight: '500', marginBottom: 6, color: foreground },
-  input: { borderWidth: 1, borderColor: border, borderRadius: radius.sm, padding: spacing.md, marginBottom: spacing.base, fontSize: 16 },
-  picker: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.base },
-  pickerOption: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.sm, backgroundColor: muted },
+  label: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 6,
+    color: foreground,
+  },
+  hint: { fontSize: 13, color: mutedForeground, marginBottom: spacing.sm },
+  emptyObjects: {
+    fontSize: 13,
+    color: mutedForeground,
+    marginBottom: spacing.base,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginBottom: spacing.base,
+    fontSize: 16,
+  },
+  picker: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.base,
+  },
+  pickerOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: muted,
+  },
   pickerOptionActive: { backgroundColor: primary },
   pickerOptionText: { fontSize: 14, color: foreground },
   pickerOptionTextActive: { color: primaryForeground },

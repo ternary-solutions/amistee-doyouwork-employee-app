@@ -18,6 +18,7 @@ import { resourcesService } from '@/services/resources';
 import type { Resource } from '@/types/resources';
 import { getBaseUrl, getMediaUrl } from '@/utils/api';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
@@ -39,6 +40,17 @@ export default function ResourcesScreen() {
   const [filter, setFilter] = useState<string>('');
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
   const [docViewer, setDocViewer] = useState<{ url: string; title: string } | null>(null);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({
+        title: 'Resources',
+        subtitle: 'Browse documents and resources.',
+        showBack: false,
+      }),
+      [],
+    ),
+  );
 
   // Combined filter options from both category and type (deduplicated)
   const filterOptions = useMemo(() => {

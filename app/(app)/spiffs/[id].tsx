@@ -16,12 +16,13 @@ import {
 } from '@/constants/theme';
 import { spiffsService } from '@/services/spiffs';
 import type { Spiff, SpiffComment } from '@/types/spiffs';
-import { getMediaUrl } from '@/utils/api';
+import { getMediaSource, getMediaUrl } from '@/utils/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -52,6 +53,13 @@ export default function SpiffDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [docViewer, setDocViewer] = useState<{ url: string; title: string } | null>(null);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Spiff', showBack: true }),
+      [],
+    ),
+  );
 
   const loadComments = useCallback(async () => {
     if (!id) return;
@@ -169,7 +177,7 @@ export default function SpiffDetailScreen() {
                   style={({ pressed }) => [styles.attachmentThumb, pressed && { opacity: 0.8 }]}
                   onPress={() => openAttachment(url, `Attachment ${i + 1}`)}
                 >
-                  <Image source={{ uri: url.startsWith('http') ? url : getMediaUrl(url) }} style={styles.attachmentImage} />
+                  <Image source={url.startsWith('http') ? { uri: url } : getMediaSource(url)} style={styles.attachmentImage} />
                   <View style={styles.attachmentOverlay}>
                     <Ionicons name="expand" size={20} color="#fff" />
                   </View>

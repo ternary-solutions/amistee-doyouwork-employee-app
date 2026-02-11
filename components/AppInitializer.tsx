@@ -20,6 +20,7 @@ export function AppInitializer() {
     const run = async () => {
       const token = await tokenStorage.getAccessToken();
       if (!token || me) return;
+      useMainStore.getState().setAccessToken(token);
 
       try {
         const storedLocationId = await getStoredLocationId();

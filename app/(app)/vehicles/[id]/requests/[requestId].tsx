@@ -15,8 +15,9 @@ import { repairRequestsService } from '@/services/requests/repairs';
 import { getErrorMessage } from '@/utils/errorMessage';
 import type { RepairRequest, RepairRequestComment } from '@/types/requests/repairs';
 import { format } from 'date-fns';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -58,6 +59,13 @@ export default function VehicleRequestDetailScreen() {
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Repair Request', showBack: true }),
+      [],
+    ),
+  );
 
   const load = useCallback(async () => {
     if (!requestId) return;

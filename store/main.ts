@@ -10,6 +10,7 @@ interface MainStore {
   globalLoading: boolean;
   me: User | null;
   role: UserRole | null;
+  accessToken: string | null;
   users: User[] | [];
   employees: User[] | [];
   locations: Location[] | [];
@@ -20,6 +21,7 @@ interface MainStore {
   setGlobalLoading: (globalLoading: boolean) => void;
   setMe: (me: User | null) => void;
   setRole: (role: UserRole | null) => void;
+  setAccessToken: (token: string | null) => void;
   setUsers: (users: User[] | []) => void;
   setEmployees: (users: User[] | []) => void;
   setLocations: (locations: Location[] | []) => void;
@@ -33,6 +35,7 @@ export const useMainStore = create<MainStore>((set, get) => ({
   globalLoading: false,
   me: null,
   role: null,
+  accessToken: null,
   users: [],
   employees: [],
   locations: [],
@@ -43,6 +46,7 @@ export const useMainStore = create<MainStore>((set, get) => ({
   setGlobalLoading: (globalLoading) => set({ globalLoading }),
   setMe: (me) => set({ me }),
   setRole: (role) => set({ role }),
+  setAccessToken: (accessToken) => set({ accessToken }),
   setUsers: (users) => set({ users }),
   setEmployees: (users) => set({ users }),
   setLocations: (locations) => set({ locations }),

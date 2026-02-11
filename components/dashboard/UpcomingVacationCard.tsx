@@ -8,15 +8,18 @@ import {
 } from '@/constants/theme';
 import { timeOffRequestsService } from '@/services/requests/timeOffs';
 import type { TimeOffRequest } from '@/types/requests/timeOffs';
+import { useMainStore } from '@/store/main';
 import { format, startOfDay } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 export function UpcomingVacationCard() {
+  const me = useMainStore((s) => s.me);
   const [items, setItems] = useState<TimeOffRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!me) return;
     try {
       setLoading(true);
       const res = await timeOffRequestsService.list(1, 50);
@@ -31,13 +34,14 @@ export function UpcomingVacationCard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [me]);
 
   useEffect(() => {
+    if (!me) return;
     load();
-  }, [load]);
+  }, [me, load]);
 
-  if (loading) {
+  if (!me || loading) {
     return (
       <Card>
         <View style={styles.loadingRow}>

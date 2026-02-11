@@ -14,7 +14,8 @@ import {
 } from '@/constants/theme';
 import { suggestionsService } from '@/services/suggestions';
 import type { Suggestion } from '@/types/suggestions';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -27,7 +28,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { FormModal } from '@/components/ui/FormModal';
 import { ListCard } from '@/components/ui/ListCard';
@@ -41,7 +42,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function SuggestionsScreen() {
-  const navigation = useNavigation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<Suggestion[]>([]);
@@ -73,11 +73,17 @@ export default function SuggestionsScreen() {
     load();
   }, [load]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerAction: { label: 'New suggestion', onPress: () => setModalOpen(true) },
-    });
-  }, [navigation]);
+  useSetHeaderOptions(
+    useMemo(
+      () => ({
+        title: 'Suggestions',
+        subtitle: 'Submit and track ideas and feedback.',
+        showBack: false,
+        headerAction: { label: 'New suggestion', onPress: () => setModalOpen(true) },
+      }),
+      [],
+    ),
+  );
 
   const handleCreate = async () => {
     if (!typeId || !title.trim() || !details.trim()) return;

@@ -9,12 +9,16 @@ import {
   primaryForeground,
   radius,
   spacing,
-} from '@/constants/theme';
-import { toolsService } from '@/services/tools';
-import { getErrorMessage } from '@/utils/errorMessage';
-import type { Tool } from '@/types/tools';
-import { useToolRequestDraftStore } from '@/store/toolRequestDraft';
-import { useCallback, useEffect, useState } from 'react';
+} from "@/constants/theme";
+import { useSetHeaderOptions } from "@/contexts/HeaderOptionsContext";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { toolsService } from "@/services/tools";
+import { useToolRequestDraftStore } from "@/store/toolRequestDraft";
+import type { Tool } from "@/types/tools";
+import { getErrorMessage } from "@/utils/errorMessage";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,11 +29,8 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const PAGE_SIZE = 24;
 
@@ -39,7 +40,7 @@ export default function ToolCatalogScreen() {
   const addFromCatalog = useToolRequestDraftStore((s) => s.addFromCatalog);
 
   const [tools, setTools] = useState<Tool[]>([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -55,7 +56,7 @@ export default function ToolCatalogScreen() {
         const data = await toolsService.list(
           pageNum,
           PAGE_SIZE,
-          debouncedSearch || undefined
+          debouncedSearch || undefined,
         );
         const items = data?.items ?? [];
         setTools((prev) => (append ? [...prev, ...items] : items));
@@ -63,20 +64,35 @@ export default function ToolCatalogScreen() {
         setTotalPages(data?.total_pages ?? 1);
         setTotalCount(data?.total ?? 0);
       } catch (error) {
-        console.error('Failed to load tools', error);
-        Alert.alert('Error', getErrorMessage(error, 'Failed to load tools. Please try again.'));
+        console.error("Failed to load tools", error);
+        Alert.alert(
+          "Error",
+          getErrorMessage(error, "Failed to load tools. Please try again."),
+        );
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [debouncedSearch]
+    [debouncedSearch],
   );
 
   useEffect(() => {
     setPage(1);
     loadTools(1, false);
   }, [debouncedSearch, loadTools]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({
+        title: "Tool Catalog",
+        subtitle: "Select tools to add to your request",
+        showBack: true,
+        headerAction: undefined,
+      }),
+      [],
+    ),
+  );
 
   const loadMore = useCallback(() => {
     if (page >= totalPages || loadingMore || loading) return;
@@ -94,7 +110,7 @@ export default function ToolCatalogScreen() {
       <View style={styles.toolInfo}>
         <Text style={styles.toolName}>{item.tool_name}</Text>
         <Text style={styles.toolStock}>
-          {item.total_stock > 0 ? `Stock: ${item.total_stock}` : 'Out of stock'}
+          {item.total_stock > 0 ? `Stock: ${item.total_stock}` : "Out of stock"}
         </Text>
       </View>
       <Pressable
@@ -118,7 +134,10 @@ export default function ToolCatalogScreen() {
         </View>
       ) : (
         <Pressable
-          style={({ pressed }) => [styles.loadMoreBtn, pressed && { opacity: 0.8 }]}
+          style={({ pressed }) => [
+            styles.loadMoreBtn,
+            pressed && { opacity: 0.8 },
+          ]}
           onPress={loadMore}
         >
           <Text style={styles.loadMoreText}>
@@ -129,9 +148,20 @@ export default function ToolCatalogScreen() {
     ) : null;
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom + spacing.lg }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: insets.bottom + spacing.lg },
+        { paddingTop: 16 },
+      ]}
+    >
       <View style={styles.searchRow}>
-        <Ionicons name="search" size={20} color={mutedForeground} style={styles.searchIcon} />
+        <Ionicons
+          name="search"
+          size={20}
+          color={mutedForeground}
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.searchInput}
           value={search}
@@ -154,7 +184,9 @@ export default function ToolCatalogScreen() {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              {debouncedSearch ? 'No tools match your search.' : 'No tools available.'}
+              {debouncedSearch
+                ? "No tools match your search."
+                : "No tools available."}
             </Text>
           }
           ListFooterComponent={ListFooter}
@@ -177,8 +209,8 @@ const styles = StyleSheet.create({
     backgroundColor: background,
   },
   searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: spacing.base,
     marginBottom: spacing.base,
     borderWidth: 1,
@@ -201,9 +233,9 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
     backgroundColor: muted,
@@ -211,7 +243,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   toolInfo: { flex: 1 },
-  toolName: { fontSize: 14, fontWeight: '600', color: foreground },
+  toolName: { fontSize: 14, fontWeight: "600", color: foreground },
   toolStock: { fontSize: 12, color: mutedForeground },
   addBtn: {
     paddingVertical: 6,
@@ -220,10 +252,15 @@ const styles = StyleSheet.create({
     backgroundColor: primary,
   },
   addBtnDisabled: { opacity: 0.5 },
-  addBtnText: { fontSize: 13, fontWeight: '600', color: primaryForeground },
-  loader: { paddingVertical: spacing.sm, alignItems: 'center' },
-  loadMoreBtn: { paddingVertical: spacing.sm, alignItems: 'center' },
-  loadMoreText: { fontSize: 14, fontWeight: '500', color: primary },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 14, color: mutedForeground, textAlign: 'center', marginTop: spacing.xl },
+  addBtnText: { fontSize: 13, fontWeight: "600", color: primaryForeground },
+  loader: { paddingVertical: spacing.sm, alignItems: "center" },
+  loadMoreBtn: { paddingVertical: spacing.sm, alignItems: "center" },
+  loadMoreText: { fontSize: 14, fontWeight: "500", color: primary },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyText: {
+    fontSize: 14,
+    color: mutedForeground,
+    textAlign: "center",
+    marginTop: spacing.xl,
+  },
 });

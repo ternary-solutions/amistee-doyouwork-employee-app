@@ -10,8 +10,9 @@ import {
 } from '@/constants/theme';
 import { usersService } from '@/services/users';
 import type { User } from '@/types/users';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -41,6 +42,13 @@ export default function ContactDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Contact', showBack: true }),
+      []
+    )
+  );
 
   if (loading) {
     return (

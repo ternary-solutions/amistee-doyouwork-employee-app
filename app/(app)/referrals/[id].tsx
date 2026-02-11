@@ -13,8 +13,9 @@ import { partnerCompaniesService } from '@/services/partnerCompanies';
 import type { PartnerCompany } from '@/types/partnerCompanies';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -45,6 +46,13 @@ export default function PartnerDetailScreen() {
   const insets = useSafeAreaInsets();
   const [partner, setPartner] = useState<PartnerCompany | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Partner Company', showBack: true }),
+      [],
+    ),
+  );
 
   const load = useCallback(async () => {
     if (!id) return;

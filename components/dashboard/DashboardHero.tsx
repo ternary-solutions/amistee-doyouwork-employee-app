@@ -5,15 +5,15 @@ import {
   primaryForeground,
   spacing,
   typography,
-} from '@/constants/theme';
-import { useNotifications } from '@/contexts/NotificationContext';
-import { useMainStore } from '@/store/main';
-import { getMediaUrl } from '@/utils/api';
-import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
-import { useRouter } from 'expo-router';
-import { Image as ExpoImage } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+} from "@/constants/theme";
+import { useNotifications } from "@/contexts/NotificationContext";
+import { useMainStore } from "@/store/main";
+import { getMediaSource } from "@/utils/mediaSource";
+import { Ionicons } from "@expo/vector-icons";
+import { format } from "date-fns";
+import { Image as ExpoImage } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import {
   Dimensions,
   Image,
@@ -21,11 +21,11 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
 
-const logoSource = require('../../assets/images/doyouwork-logo.png');
+const logoSource = require("../../assets/images/doyouwork-logo.png");
 
 interface DashboardHeroProps {
   selectedDate: Date;
@@ -34,28 +34,28 @@ interface DashboardHeroProps {
 
 function getInitials(name: string): string {
   return name
-    .split(' ')
+    .split(" ")
     .map((n) => n[0])
-    .join('')
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 }
 
-export function DashboardHero({ selectedDate, onMenuClick }: DashboardHeroProps) {
+export function DashboardHero({
+  selectedDate,
+  onMenuClick,
+}: DashboardHeroProps) {
   const me = useMainStore((state) => state.me);
   const router = useRouter();
   const { unreadCount } = useNotifications();
-  const dayName = format(selectedDate, 'EEEE');
-  const fullDate = format(selectedDate, 'MMMM d, yyyy');
+  const dayName = format(selectedDate, "EEEE");
+  const fullDate = format(selectedDate, "MMMM d, yyyy");
   const insets = useSafeAreaInsets();
-  const avatarUri = getMediaUrl(me?.photo_url) || '';
+  const avatarSource = getMediaSource(me?.photo_url);
 
   return (
     <View style={[styles.wrapper, { paddingTop: insets.top }]}>
-      <LinearGradient
-        colors={[primary, primaryDark]}
-        style={styles.gradient}
-      >
+      <LinearGradient colors={[primary, primaryDark]} style={styles.gradient}>
         <View style={styles.topBar}>
           <Pressable
             onPress={onMenuClick}
@@ -67,35 +67,46 @@ export function DashboardHero({ selectedDate, onMenuClick }: DashboardHeroProps)
           </Pressable>
           <View style={styles.topBarRight}>
             <Pressable
-              onPress={() => router.push('/(app)/notifications')}
-              style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
-              accessibilityLabel={unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+              onPress={() => router.push("/(app)/notifications")}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                pressed && styles.pressed,
+              ]}
+              accessibilityLabel={
+                unreadCount > 0
+                  ? `${unreadCount} unread notifications`
+                  : "Notifications"
+              }
             >
-              <Ionicons name="notifications-outline" size={24} color={primaryForeground} />
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color={primaryForeground}
+              />
               {unreadCount > 0 ? (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {unreadCount > 99 ? "99+" : unreadCount}
                   </Text>
                 </View>
               ) : null}
             </Pressable>
             <Pressable
-              onPress={() => router.push('/(app)/settings')}
-              style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
+              onPress={() => router.push("/(app)/settings")}
+              style={({ pressed }) => [
+                styles.avatarWrap,
+                pressed && styles.pressed,
+              ]}
               accessibilityLabel="My account"
             >
-              {avatarUri ? (
-                <ExpoImage
-                  source={{ uri: avatarUri }}
-                  style={styles.avatar}
-                />
+              {me?.photo_url ? (
+                <ExpoImage source={avatarSource} style={styles.avatar} />
               ) : (
                 <View style={styles.avatarFallback}>
                   <Text style={styles.avatarText}>
                     {me?.first_name
-                      ? getInitials(`${me.first_name} ${me.last_name || ''}`)
-                      : '?'}
+                      ? getInitials(`${me.first_name} ${me.last_name || ""}`)
+                      : "?"}
                   </Text>
                 </View>
               )}
@@ -104,7 +115,11 @@ export function DashboardHero({ selectedDate, onMenuClick }: DashboardHeroProps)
         </View>
 
         <View style={styles.logoWrap}>
-          <Image source={logoSource} style={styles.logoImage} resizeMode="contain" />
+          <Image
+            source={logoSource}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
         <View style={styles.dayBlock}>
@@ -115,7 +130,10 @@ export function DashboardHero({ selectedDate, onMenuClick }: DashboardHeroProps)
         <View style={styles.waveWrap} pointerEvents="none">
           <Svg
             viewBox="0 0 1440 120"
-            style={[styles.waveSvg, { width: Dimensions.get('window').width, height: 40 }]}
+            style={[
+              styles.waveSvg,
+              { width: Dimensions.get("window").width, height: 40 },
+            ]}
             preserveAspectRatio="xMidYMax meet"
           >
             <Path
@@ -135,12 +153,12 @@ const styles = StyleSheet.create({
   },
   gradient: {
     paddingBottom: 64,
-    position: 'relative',
+    position: "relative",
   },
   topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
   },
@@ -149,31 +167,31 @@ const styles = StyleSheet.create({
     margin: -spacing.sm,
   },
   topBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   iconBtn: {
     padding: spacing.sm,
     margin: -spacing.sm,
-    position: 'relative',
+    position: "relative",
   },
   badge: {
-    position: 'absolute',
+    position: "absolute",
     right: 0,
     top: 0,
     minWidth: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#ef4444",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 4,
   },
   badgeText: {
     fontSize: 9,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: "700",
+    color: "#fff",
   },
   pressed: {
     opacity: 0.7,
@@ -183,36 +201,36 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    overflow: 'hidden',
+    borderColor: "rgba(255,255,255,0.3)",
+    overflow: "hidden",
   },
   avatar: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   avatarFallback: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
     color: primaryForeground,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   logoWrap: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: spacing.base,
     marginBottom: spacing.sm,
   },
   logoImage: {
     width: 120,
-    height: 32,
+    height: 48,
   },
   dayBlock: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
   },
@@ -225,14 +243,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   waveWrap: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
     height: 40,
   },
   waveSvg: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
 });

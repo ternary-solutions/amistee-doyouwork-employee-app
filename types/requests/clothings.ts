@@ -1,17 +1,38 @@
-import type { User } from '@/types/users';
+import type { User } from "@/types/users";
 
-export type ClothingStatus = 'Pending' | 'Approved' | 'Denied' | 'Completed';
+export type ClothingStatus = "Pending" | "Approved" | "Denied" | "Completed";
 export type ClothingSize =
-  | 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL'
-  | 'One Size' | '30x30' | '32x32' | '34x32' | '36x32';
+  | "XS"
+  | "S"
+  | "M"
+  | "L"
+  | "XL"
+  | "XXL"
+  | "XXXL"
+  | "One Size"
+  | "30x30"
+  | "32x32"
+  | "34x32"
+  | "36x32";
+
+/** A requestable clothing object (e.g. "Polo Shirt - M", "Safety Vest"). */
+export interface ClothingObject {
+  id: string;
+  name: string;
+  size?: string;
+  type_name?: string;
+}
 
 export interface ClothingRequest {
   id: string;
   user: User;
-  clothing_type_id: string;
+  /** Legacy: when API still returns type-based request */
+  clothing_type_id?: string;
   clothing_type_name?: string;
-  quantity: number;
-  size: ClothingSize;
+  quantity?: number;
+  size?: ClothingSize;
+  /** Requested clothing objects (when API uses object-based requests) */
+  requested_objects?: ClothingObject[];
   reason: string | null;
   status: ClothingStatus;
   created_at: string;
@@ -27,8 +48,7 @@ export interface ClothingRequestList {
 }
 
 export interface ClothingRequestCreate {
-  clothing_type_id: string;
-  quantity: number;
+  clothing_object_ids: string[];
   size: ClothingSize;
   reason?: string;
 }

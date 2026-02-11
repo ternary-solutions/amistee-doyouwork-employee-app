@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppInitializer } from '@/components/AppInitializer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { PushNotificationSetup } from '@/components/PushNotificationSetup';
+import { HeaderOptionsProvider } from '@/contexts/HeaderOptionsContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ export default function RootLayout() {
           <BottomSheetModalProvider>
             <QueryClientProvider client={queryClient}>
               <ThemeProvider value={DefaultTheme}>
+                <HeaderOptionsProvider>
                 <NotificationProvider>
                   <AppInitializer />
                   <PushNotificationSetup />
@@ -42,6 +44,7 @@ export default function RootLayout() {
               <Toasts />
                   <StatusBar style="dark" />
                 </NotificationProvider>
+                </HeaderOptionsProvider>
               </ThemeProvider>
             </QueryClientProvider>
           </BottomSheetModalProvider>

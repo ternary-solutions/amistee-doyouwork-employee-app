@@ -2,9 +2,8 @@ import { clientInfo, menuGroups } from '@/constants/navigation';
 import { primary, primaryDark, primaryForeground } from '@/constants/theme';
 import { hapticImpact } from '@/utils/haptics';
 import { useMainStore } from '@/store/main';
-import { LocationSwitcher } from '@/components/layout/LocationSwitcher';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import { getMediaUrl, logout } from '@/utils/api';
+import { getMediaSource, logout } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
@@ -67,7 +66,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
             <View style={styles.avatarWrap}>
               {me?.photo_url ? (
                 <Image
-                  source={{ uri: getMediaUrl(me.photo_url) }}
+                  source={getMediaSource(me.photo_url)}
                   style={styles.avatar}
                 />
               ) : (
@@ -92,8 +91,6 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
             </View>
           </View>
         </View>
-
-        <LocationSwitcher />
 
         {/* Menu groups */}
         {menuGroups.map((group, groupIndex) => (
@@ -131,45 +128,6 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
             {groupIndex < menuGroups.length - 1 && <View style={styles.divider} />}
           </View>
         ))}
-
-        {/* Notifications - drawer item for notifications screen */}
-        <View style={styles.group}>
-          <Text style={styles.groupLabel}>APP</Text>
-          <AnimatedPressable
-            style={[styles.item, currentRouteName === 'notifications' && styles.itemActive]}
-            onPress={() => handleNavigate('notifications')}
-          >
-            <View style={styles.itemLeft}>
-              <Ionicons
-                name="notifications"
-                size={22}
-                color={
-                  currentRouteName === 'notifications'
-                    ? primaryForeground
-                    : 'rgba(255,255,255,0.7)'
-                }
-                style={styles.itemIcon}
-              />
-              <Text
-                style={[
-                  styles.itemLabel,
-                  currentRouteName === 'notifications' && styles.itemLabelActive,
-                ]}
-              >
-                Notifications
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={
-                currentRouteName === 'notifications'
-                  ? primaryForeground
-                  : 'rgba(255,255,255,0.6)'
-              }
-            />
-          </AnimatedPressable>
-        </View>
 
         {/* Client badge */}
         <View style={styles.clientBadge}>

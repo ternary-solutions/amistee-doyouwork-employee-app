@@ -18,8 +18,9 @@ import { getMediaUrl } from '@/utils/api';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
+import { useSetHeaderOptions } from '@/contexts/HeaderOptionsContext';
 import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -47,6 +48,13 @@ export default function ExpenseDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [docViewer, setDocViewer] = useState<{ url: string; title: string } | null>(null);
+
+  useSetHeaderOptions(
+    useMemo(
+      () => ({ title: 'Expense', showBack: true }),
+      [],
+    ),
+  );
 
   const loadComments = useCallback(async () => {
     if (!id) return;

@@ -111,13 +111,26 @@ class PushNotificationService {
       this.tokenRegistered = true;
       this.currentToken = token;
     } catch (error: unknown) {
-      const err = error as { response?: { status?: number; data?: unknown } };
-      const msg = err.response?.data && typeof err.response.data === 'object' && 'message' in err.response.data
-        ? (err.response.data as { message: string }).message
-        : err.response?.status
-          ? `HTTP ${err.response.status}`
-          : String(error);
-      console.error('[PushNotifications] Error registering token:', msg);
+      const err = error as { response?: { status?: number; data?: unknown }; message?: string };
+      let msg: string;
+      if (err.response?.data && typeof err.response.data === 'object' && err.response.data !== null && 'message' in err.response.data) {
+        const m = (err.response.data as { message: unknown }).message;
+        msg = typeof m === 'string' ? m : JSON.stringify(m);
+      } else if (err.response?.status) {
+        msg = `HTTP ${err.response.status}`;
+      } else if (error instanceof Error) {
+        msg = (error as Error).message || (error as Error).toString();
+      } else if (err?.message && typeof err.message === 'string') {
+        msg = err.message;
+      } else {
+        try {
+          msg = typeof error === 'object' && error !== null ? JSON.stringify(error) : String(error);
+        } catch {
+          msg = 'Unknown error';
+        }
+      }
+      const logMsg = typeof msg === 'string' ? msg : JSON.stringify(msg);
+      console.error('[PushNotifications] Error registering token:', logMsg);
       this.tokenRegistered = false;
       this.currentToken = null;
     }

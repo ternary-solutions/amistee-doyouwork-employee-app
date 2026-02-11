@@ -62,7 +62,7 @@ export default function ScheduleScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: background }]}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >

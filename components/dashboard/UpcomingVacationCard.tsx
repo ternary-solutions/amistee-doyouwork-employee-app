@@ -1,21 +1,16 @@
 import { Card } from '@/components/ui/Card';
+import {
+    foreground,
+    mutedForeground,
+    spacing,
+    statusBadge,
+    typography,
+} from '@/constants/theme';
 import { timeOffRequestsService } from '@/services/requests/timeOffs';
 import type { TimeOffRequest } from '@/types/requests/timeOffs';
-import { format } from 'date-fns';
+import { format, startOfDay } from 'date-fns';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import {
-  mutedForeground,
-  spacing,
-  typography,
-  foreground,
-} from '@/constants/theme';
-
-const statusColors: Record<string, { bg: string; text: string }> = {
-  Pending: { bg: '#fef3c7', text: '#92400e' },
-  Approved: { bg: '#dcfce7', text: '#166534' },
-  Denied: { bg: '#fee2e2', text: '#991b1b' },
-};
 
 export function UpcomingVacationCard() {
   const [items, setItems] = useState<TimeOffRequest[]>([]);
@@ -25,7 +20,12 @@ export function UpcomingVacationCard() {
     try {
       setLoading(true);
       const res = await timeOffRequestsService.list(1, 50);
-      setItems(res.items || []);
+      const all = res.items || [];
+      const today = startOfDay(new Date());
+      const todayOrUpcoming = all.filter(
+        (item) => startOfDay(new Date(item.end_date)).getTime() >= today.getTime()
+      );
+      setItems(todayOrUpcoming);
     } catch (e) {
       console.error('[UpcomingVacationCard]', e);
     } finally {
@@ -59,7 +59,7 @@ export function UpcomingVacationCard() {
   const first = items[0];
   const startDate = new Date(first.start_date);
   const endDate = new Date(first.end_date);
-  const statusStyle = statusColors[first.status] || { bg: '#f1f5f9', text: mutedForeground };
+  const statusStyle = (statusBadge as Record<string, { bg: string; text: string }>)[first.status] ?? { bg: '#f1f5f9', text: mutedForeground };
 
   return (
     <Card>

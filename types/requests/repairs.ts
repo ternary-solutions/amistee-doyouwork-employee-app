@@ -26,3 +26,22 @@ export interface RepairRequestCreate {
   description: string;
   priority?: RepairPriority | null;
 }
+
+export interface RepairRequestComment {
+  id: string;
+  repair_request_id: string;
+  user_id: string;
+  comment: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    id: string;
+    first_name: string;
+    last_name: string | null;
+    email: string;
+  };
+}
+
+export interface RepairRequestCommentCreate {
+  comment: string;
+}

@@ -1,0 +1,432 @@
+import { clientInfo, menuGroups } from '@/constants/navigation';
+import { primary, primaryDark, primaryForeground } from '@/constants/theme';
+import { locationsService } from '@/services/locations';
+import { useMainStore } from '@/store/main';
+import { fetchMe, getMediaUrl, logout } from '@/utils/api';
+import { Ionicons } from '@expo/vector-icons';
+import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { DrawerContentScrollView } from '@react-navigation/drawer';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+export function CustomDrawerContent(props: DrawerContentComponentProps) {
+  const { state, navigation } = props;
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const me = useMainStore((state) => state.me);
+  const locationIds = useMainStore((state) => state.locationIds);
+  const currentLocationId = useMainStore((state) => state.currentLocationId);
+  const setCurrentLocationId = useMainStore((state) => state.setCurrentLocationId);
+  const [locationNames, setLocationNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (locationIds.length <= 1) return;
+    let cancelled = false;
+    Promise.all(
+      locationIds.map((id) =>
+        locationsService.getById(id).then((loc) => ({ id, name: loc.name }))
+      )
+    ).then((pairs) => {
+      if (!cancelled) setLocationNames(Object.fromEntries(pairs.map((p) => [p.id, p.name])));
+    });
+    return () => { cancelled = true; };
+  }, [locationIds]);
+
+  const currentRouteName = state.routes[state.index]?.name ?? '';
+
+  const handleNavigate = useCallback(
+    (name: string) => {
+      navigation.navigate(name as never);
+      navigation.closeDrawer();
+    },
+    [navigation]
+  );
+
+  const handleMyAccount = useCallback(() => {
+    navigation.closeDrawer();
+    router.push('/(app)/settings');
+  }, [navigation, router]);
+
+  const handleSignOut = useCallback(async () => {
+    navigation.closeDrawer();
+    await logout();
+    router.replace('/(auth)/login');
+  }, [navigation, router]);
+
+  const handleSwitchLocation = useCallback(
+    async (locId: string) => {
+      if (locId === currentLocationId) return;
+      setCurrentLocationId(locId);
+      navigation.closeDrawer();
+      try {
+        await fetchMe();
+      } catch (_) {}
+    },
+    [currentLocationId, setCurrentLocationId, navigation]
+  );
+
+  const fullName = me ? [me.first_name, me.last_name].filter(Boolean).join(' ') : '';
+
+  return (
+    <LinearGradient
+      colors={[primary, primaryDark]}
+      style={[styles.wrapper, { paddingTop: insets.top }]}
+    >
+      <DrawerContentScrollView
+        {...props}
+        contentContainerStyle={styles.scrollContent}
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile header */}
+        <View style={styles.profileBlock}>
+          <View style={styles.profileRow}>
+            <View style={styles.avatarWrap}>
+              {me?.photo_url ? (
+                <Image
+                  source={{ uri: getMediaUrl(me.photo_url) }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarInitial}>
+                    {me?.first_name?.[0] ?? '?'}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.profileText}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {fullName || 'Account'}
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.myAccountBtn, pressed && styles.pressed]}
+                onPress={handleMyAccount}
+              >
+                <Text style={styles.myAccountBtnText}>My Account</Text>
+                <Ionicons name="chevron-forward" size={14} color={primaryForeground} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        {/* Menu groups */}
+        {menuGroups.map((group, groupIndex) => (
+          <View key={group.label} style={styles.group}>
+            <Text style={styles.groupLabel}>{group.label}</Text>
+            <View style={styles.groupItems}>
+              {group.items.map((item) => {
+                const isActive = currentRouteName === item.name;
+                return (
+                  <Pressable
+                    key={item.name}
+                    style={({ pressed }) => [
+                      styles.item,
+                      isActive && styles.itemActive,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => handleNavigate(item.name)}
+                  >
+                    <View style={styles.itemLeft}>
+                      <Ionicons
+                        name={item.icon as keyof typeof Ionicons.glyphMap}
+                        size={22}
+                        color={isActive ? primaryForeground : 'rgba(255,255,255,0.7)'}
+                        style={styles.itemIcon}
+                      />
+                      <Text style={[styles.itemLabel, isActive && styles.itemLabelActive]}>
+                        {item.label}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={isActive ? primaryForeground : 'rgba(255,255,255,0.6)'}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+            {groupIndex < menuGroups.length - 1 && <View style={styles.divider} />}
+          </View>
+        ))}
+
+        {/* Location switcher (when user has multiple locations) */}
+        {locationIds.length > 1 && (
+          <View style={styles.group}>
+            <Text style={styles.groupLabel}>LOCATION</Text>
+            <View style={styles.locationSwitcher}>
+              {locationIds.map((locId) => {
+                const name = locationNames[locId] ?? locId.slice(0, 8);
+                const isCurrent = locId === currentLocationId;
+                return (
+                  <Pressable
+                    key={locId}
+                    style={({ pressed }) => [
+                      styles.locationBtn,
+                      isCurrent && styles.locationBtnActive,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() => handleSwitchLocation(locId)}
+                  >
+                    <Ionicons
+                      name="location"
+                      size={18}
+                      color={isCurrent ? primaryForeground : 'rgba(255,255,255,0.7)'}
+                    />
+                    <Text
+                      style={[
+                        styles.locationBtnText,
+                        isCurrent && styles.locationBtnTextActive,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Notifications - drawer item for notifications screen */}
+        <View style={styles.group}>
+          <Text style={styles.groupLabel}>APP</Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.item,
+              currentRouteName === 'notifications' && styles.itemActive,
+              pressed && styles.pressed,
+            ]}
+            onPress={() => handleNavigate('notifications')}
+          >
+            <View style={styles.itemLeft}>
+              <Ionicons
+                name="notifications"
+                size={22}
+                color={
+                  currentRouteName === 'notifications'
+                    ? primaryForeground
+                    : 'rgba(255,255,255,0.7)'
+                }
+                style={styles.itemIcon}
+              />
+              <Text
+                style={[
+                  styles.itemLabel,
+                  currentRouteName === 'notifications' && styles.itemLabelActive,
+                ]}
+              >
+                Notifications
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={
+                currentRouteName === 'notifications'
+                  ? primaryForeground
+                  : 'rgba(255,255,255,0.6)'
+              }
+            />
+          </Pressable>
+        </View>
+
+        {/* Client badge */}
+        <View style={styles.clientBadge}>
+          <Ionicons name="business" size={16} color="rgba(255,255,255,0.7)" />
+          <Text style={styles.clientName}>{clientInfo.name}</Text>
+        </View>
+
+        {/* Sign out */}
+        <Pressable
+          style={({ pressed }) => [styles.signOutBtn, pressed && styles.pressed]}
+          onPress={handleSignOut}
+        >
+          <Ionicons name="log-out-outline" size={20} color={primaryForeground} />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </Pressable>
+      </DrawerContentScrollView>
+    </LinearGradient>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+  },
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+  },
+  profileBlock: {
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: primaryForeground,
+  },
+  profileText: { flex: 1, minWidth: 0 },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.95)',
+  },
+  myAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignSelf: 'flex-start',
+  },
+  myAccountBtnText: {
+    fontSize: 14,
+    color: primaryForeground,
+  },
+  group: {
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  groupLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+  },
+  groupItems: {
+    gap: 2,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 56,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  itemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  itemIcon: {
+    marginRight: 12,
+  },
+  itemActive: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  itemLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: primaryForeground,
+  },
+  itemLabelActive: {
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.8,
+  },
+  locationSwitcher: {
+    gap: 4,
+  },
+  locationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 48,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  locationBtnActive: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  locationBtnText: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.85)',
+    flex: 1,
+  },
+  locationBtnTextActive: {
+    fontWeight: '600',
+    color: primaryForeground,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  clientBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  clientName: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'transparent',
+  },
+  signOutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: primaryForeground,
+  },
+});

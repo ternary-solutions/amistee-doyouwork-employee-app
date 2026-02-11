@@ -1,29 +1,29 @@
-import {
-  border,
-  card,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  primaryForeground,
-  radius,
-  spacing,
-  success,
-  typography,
-} from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
+import {
+    border,
+    card,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    radius,
+    spacing,
+    success,
+    typography,
+} from '@/constants/theme';
 import { notificationsService } from '@/services/notifications';
 import type { UserNotification } from '@/types/userNotifications';
-import { formatDistanceToNow } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
+import { formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 
 export function DashboardNotifications() {

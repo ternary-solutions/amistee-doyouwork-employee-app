@@ -16,7 +16,7 @@ This document tracks the migration from the Ionic/Capacitor app (`doyouwork-empl
 | `/forgot-password` | `/(auth)/forgot-password` | ✅ Ported |
 | `/notifications` | `/(app)/notifications` (index) | ✅ Ported |
 | `/notifications/:id` | `/(app)/notifications/[id]` | ✅ Ported |
-| `/schedule` | `/(app)/schedule` | ✅ Ported |
+| `/schedule` | `/(app)/schedule` | ✅ Ported (standalone screen; dashboard also shows schedule) |
 | `/tools` | `/(app)/tools` | ✅ Ported |
 | `/clothing` | `/(app)/clothing` | ✅ Ported |
 | `/expenses` | `/(app)/expenses` | ✅ Ported |
@@ -56,8 +56,8 @@ All main app screens exist in RN with matching navigation (drawer, stack params)
 | users | ✅ | ✅ | |
 | vehicles | ✅ | ✅ | |
 | **locations** | ✅ | ✅ | Added for parity; store has `locations` / `currentLocationId` |
+| **preferences** | ✅ | ✅ | preferences/me GET/PATCH; used in Settings notification toggles |
 | media | ✅ | — | Ionic only (e.g. uploads); add in RN if needed (expo-image-picker) |
-| preferences | ✅ | — | Capacitor Preferences; RN uses SecureStore/AsyncStorage only |
 | tenants | ✅ | — | Add in RN if any screen needs it |
 | specializations | ✅ | — | Add in RN if any screen needs it |
 
@@ -77,9 +77,17 @@ All main app screens exist in RN with matching navigation (drawer, stack params)
 
 ---
 
-## 4. Remaining / optional work
+## 4. Parity work completed (recent)
+
+- **Schedule**: Standalone `/(app)/schedule` screen added; drawer shows "My Schedule".
+- **Expenses**: Open/Closed filter and summary cards (Total Pending, Total Paid) added.
+- **Time off**: Open/Closed filter added.
+- **Settings**: Preferences service and types; profile photo section; personal info with Edit modal; notification toggles (job reminders, expense updates, spiff notifications) with Save; Change Password (navigate to forgot-password); Sign out. Users service: `update`, `updatePhoto` added.
+
+## 5. Remaining / optional work
 
 - **Parity pass**: Compare each RN screen to the Ionic version (layout, fields, validation, error messages).
+- **Profile photo upload**: Wire "Change Photo" to `expo-image-picker` + `usersService.updatePhoto` (service ready).
 - **Locations in UI**: If any screen should show a location picker or list, use `locationsService` and `setLocations` / `currentLocationId` (store already in place).
 - **Camera / file uploads**: If expenses or other flows need photo upload, use `expo-image-picker` and `expo-file-system` per migration reference.
 - **Cleanup**: Remove or repurpose Expo template leftovers (e.g. `(tabs)`, `explore`, `modal`) if not used.
@@ -87,7 +95,7 @@ All main app screens exist in RN with matching navigation (drawer, stack params)
 
 ---
 
-## 5. Next steps (suggested order)
+## 6. Next steps (suggested order)
 
 1. ~~Add **locations** service to RN~~ ✅ (done in this pass).
 2. Run a **parity pass** on 2–3 high-traffic screens (e.g. Dashboard, Login, Notifications).

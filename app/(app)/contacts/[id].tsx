@@ -1,4 +1,5 @@
 import {
+  background,
   foreground,
   mutedForeground,
   primary,
@@ -60,7 +61,7 @@ export default function ContactDetailScreen() {
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: background }]} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{fullName}</Text>
       <View style={styles.row}>
         <Text style={styles.label}>Email</Text>

@@ -1,11 +1,23 @@
+import { AppHeader } from '@/components/layout/AppHeader';
+import { CustomDrawerContent } from '@/components/layout/DrawerContent';
 import { Drawer } from 'expo-router/drawer';
 
 export default function AppLayout() {
   return (
     <Drawer
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: true,
-        headerTitleStyle: { fontWeight: '600' },
+        header: (props) => (
+          <AppHeader
+            {...props}
+            title={props.options?.title as string | undefined}
+            subtitle={props.options?.subtitle as string | undefined}
+            headerAction={props.options?.headerAction as { label: string; onPress: () => void } | undefined}
+          />
+        ),
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Drawer.Screen name="dashboard" options={{ drawerLabel: 'My Dashboard', title: 'Dashboard', headerShown: false }} />

@@ -1,4 +1,5 @@
 import {
+  background,
   border,
   card,
   foreground,
@@ -9,43 +10,65 @@ import {
   spacing,
   typography,
 } from '@/constants/theme';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { notificationsService } from '@/services/notifications';
 import type { UserNotification } from '@/types/userNotifications';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDistanceToNow } from 'date-fns';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function NotificationsListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await notificationsService.getMyNotifications();
+      const res = await notificationsService.getMyNotifications(1, 25, debouncedSearch || undefined);
       setNotifications(res.items || []);
     } catch (error) {
       console.error('Failed to load notifications', error);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to load notifications. Please try again.'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const renderHeader = () => (
+    <View style={styles.searchWrap}>
+      <TextInput
+        style={styles.searchInput}
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search notifications..."
+        placeholderTextColor={mutedForeground}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+    </View>
+  );
 
   const handleItemPress = async (n: UserNotification) => {
     const id = n.id || n.notification_id || '';
@@ -63,18 +86,10 @@ export default function NotificationsListScreen() {
     router.push(`/(app)/notifications/${id}`);
   };
 
-  if (loading) {
+  if (loading && notifications.length === 0) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={primary} />
-      </View>
-    );
-  }
-
-  if (notifications.length === 0) {
-    return (
-      <View style={[styles.centered, { paddingBottom: insets.bottom }]}>
-        <Text style={styles.emptyText}>No notifications found</Text>
       </View>
     );
   }
@@ -83,10 +98,12 @@ export default function NotificationsListScreen() {
     <FlatList
       data={notifications}
       keyExtractor={(n) => n.id || n.notification_id || String(Math.random())}
+      style={{ backgroundColor: background }}
+      ListHeaderComponent={renderHeader}
       contentContainerStyle={[styles.list, { paddingBottom: spacing.xl + insets.bottom }]}
       renderItem={({ item }) => (
         <Pressable
-          style={[styles.card, !item.read && styles.cardUnread]}
+          style={({ pressed }) => [styles.card, !item.read && styles.cardUnread, pressed && { opacity: 0.8 }]}
           onPress={() => handleItemPress(item)}
           accessibilityLabel={`${item.type || 'Notification'}: ${item.message}`}
           accessibilityRole="button"
@@ -107,6 +124,7 @@ export default function NotificationsListScreen() {
           </View>
         </Pressable>
       )}
+      ListEmptyComponent={<EmptyState message="No notifications found" />}
     />
   );
 }
@@ -114,6 +132,17 @@ export default function NotificationsListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  searchWrap: { paddingHorizontal: spacing.base, paddingBottom: spacing.sm },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: border,
+    borderRadius: radius.base,
+    paddingHorizontal: spacing.base,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: foreground,
+    backgroundColor: card,
+  },
   list: { padding: spacing.base, paddingBottom: spacing.xl },
   card: {
     backgroundColor: card,
@@ -141,5 +170,4 @@ const styles = StyleSheet.create({
   type: { ...typography.label, color: mutedForeground, marginBottom: 4 },
   message: { fontSize: 15, color: foreground, marginBottom: 4 },
   date: { fontSize: 12, color: mutedForeground },
-  emptyText: { fontSize: 16, color: mutedForeground },
 });

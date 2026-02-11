@@ -1,14 +1,16 @@
 import {
-  border,
-  card,
-  destructive,
-  destructiveMuted,
-  foreground,
-  mutedForeground,
-  primary,
-  radius,
-  spacing,
-  typography,
+    background,
+    border,
+    card,
+    destructive,
+    destructiveMuted,
+    foreground,
+    mutedForeground,
+    primary,
+    primaryForeground,
+    radius,
+    spacing,
+    typography,
 } from '@/constants/theme';
 import { preferencesService } from '@/services/preferences';
 import { usersService } from '@/services/users';
@@ -16,19 +18,21 @@ import { useMainStore } from '@/store/main';
 import type { Preference } from '@/types/preferences';
 import { getMediaUrl, logout } from '@/utils/api';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -102,6 +106,10 @@ export default function SettingsScreen() {
     try {
       setSavingPrefs(true);
       await preferencesService.update({
+        job_updates: preferences.job_updates,
+        company_announcements: preferences.company_announcements,
+        weekend_overtime_alerts: preferences.weekend_overtime_alerts,
+        delivery_method: preferences.delivery_method,
         job_reminders: preferences.job_reminders,
         expense_updates: preferences.expense_updates,
         spiff_notifications: preferences.spiff_notifications,
@@ -115,9 +123,26 @@ export default function SettingsScreen() {
   }, [preferences]);
 
   const handlePrefToggle = useCallback(
-    (key: 'job_reminders' | 'expense_updates' | 'spiff_notifications', value: boolean) => {
+    (
+      key:
+        | 'job_updates'
+        | 'company_announcements'
+        | 'weekend_overtime_alerts'
+        | 'job_reminders'
+        | 'expense_updates'
+        | 'spiff_notifications',
+      value: boolean
+    ) => {
       if (!preferences) return;
       setPreferences({ ...preferences, [key]: value });
+    },
+    [preferences]
+  );
+
+  const handleDeliveryMethodChange = useCallback(
+    (value: 'in_app' | 'in_app_email' | 'in_app_email_sms') => {
+      if (!preferences) return;
+      setPreferences({ ...preferences, delivery_method: value });
     },
     [preferences]
   );
@@ -157,13 +182,47 @@ export default function SettingsScreen() {
     setMe,
   ]);
 
-  const handleChangePhoto = useCallback(() => {
-    Alert.alert(
-      'Change Photo',
-      'Photo upload requires the camera/gallery. Install expo-image-picker and wire it to usersService.updatePhoto for full support.',
-      [{ text: 'OK' }]
-    );
-  }, []);
+  const handleChangePhoto = useCallback(async () => {
+    if (!me?.id) return;
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your photo library to change your profile photo.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.9,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const uri = asset.uri;
+      const filename = uri.split('/').pop() || 'photo.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: Platform.OS === 'web' ? uri : uri,
+        type,
+        name: filename,
+      } as unknown as Blob);
+      setUploadingPhoto(true);
+      const updatedUser = await usersService.updatePhoto(me.id, formData);
+      setMe(updatedUser);
+      Alert.alert('Success', 'Profile photo updated successfully.');
+    } catch (error) {
+      console.error('Failed to upload photo', error);
+      Alert.alert('Error', 'Failed to upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }, [me?.id, setMe]);
 
   const handleLogout = async () => {
     await logout();
@@ -175,7 +234,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: background }]}
       contentContainerStyle={[styles.content, { paddingBottom: spacing.xl + insets.bottom }]}
       keyboardShouldPersistTaps="handled"
     >
@@ -236,6 +295,21 @@ export default function SettingsScreen() {
         ) : preferences ? (
           <>
             <ToggleRow
+              label="Job Updates"
+              value={preferences.job_updates}
+              onValueChange={(v) => handlePrefToggle('job_updates', v)}
+            />
+            <ToggleRow
+              label="Company Announcements"
+              value={preferences.company_announcements}
+              onValueChange={(v) => handlePrefToggle('company_announcements', v)}
+            />
+            <ToggleRow
+              label="Weekend Overtime Alerts"
+              value={preferences.weekend_overtime_alerts}
+              onValueChange={(v) => handlePrefToggle('weekend_overtime_alerts', v)}
+            />
+            <ToggleRow
               label="Job Reminders"
               value={preferences.job_reminders}
               onValueChange={(v) => handlePrefToggle('job_reminders', v)}
@@ -250,6 +324,30 @@ export default function SettingsScreen() {
               value={preferences.spiff_notifications}
               onValueChange={(v) => handlePrefToggle('spiff_notifications', v)}
             />
+            <View style={styles.deliveryMethodRow}>
+              <Text style={styles.toggleLabel}>Delivery Method</Text>
+              <View style={styles.deliveryMethodOptions}>
+                {(['in_app', 'in_app_email', 'in_app_email_sms'] as const).map((opt) => (
+                  <Pressable
+                    key={opt}
+                    style={[
+                      styles.deliveryOption,
+                      preferences.delivery_method === opt && styles.deliveryOptionActive,
+                    ]}
+                    onPress={() => handleDeliveryMethodChange(opt)}
+                  >
+                    <Text
+                      style={[
+                        styles.deliveryOptionText,
+                        preferences.delivery_method === opt && styles.deliveryOptionTextActive,
+                      ]}
+                    >
+                      {opt === 'in_app' ? 'In App' : opt === 'in_app_email' ? 'In App + Email' : 'In App + Email + SMS'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
             <Pressable
               style={[styles.savePrefsBtn, savingPrefs && styles.savePrefsBtnDisabled]}
               onPress={handleSavePreferences}
@@ -452,6 +550,19 @@ const styles = StyleSheet.create({
   prefLoader: { marginVertical: spacing.sm },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.sm },
   toggleLabel: { fontSize: 14, color: foreground, flex: 1 },
+  deliveryMethodRow: { paddingVertical: spacing.sm, marginTop: spacing.xs },
+  deliveryMethodOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 6 },
+  deliveryOption: {
+    paddingHorizontal: spacing.base,
+    paddingVertical: 8,
+    borderRadius: radius.full,
+    backgroundColor: '#e2e8f0',
+    borderWidth: 1,
+    borderColor: border,
+  },
+  deliveryOptionActive: { backgroundColor: primary, borderColor: primary },
+  deliveryOptionText: { fontSize: 13, color: foreground },
+  deliveryOptionTextActive: { color: primaryForeground, fontWeight: '600' },
   savePrefsBtn: {
     marginTop: spacing.sm,
     paddingVertical: 12,
@@ -486,7 +597,5 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontSize: 16, fontWeight: '500', color: foreground },
   submitBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: radius.sm, backgroundColor: primary },
   submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: { fontSize: 16, fontWeight: '600', color: '#fff' },
+  submitBtnText: { fontSize: 16, fontWeight: '600', color: primaryForeground },
 });
-
-const primary = '#0b4a91';

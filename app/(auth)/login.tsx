@@ -1,15 +1,15 @@
 import {
-  border,
-  card,
-  destructive,
-  foreground,
-  mutedForeground,
-  primary,
-  primaryDark,
-  primaryForeground,
-  radius,
-  spacing,
-  typography,
+    border,
+    card,
+    destructive,
+    foreground,
+    mutedForeground,
+    primary,
+    primaryDark,
+    primaryForeground,
+    radius,
+    spacing,
+    typography,
 } from '@/constants/theme';
 import { useMainStore } from '@/store/main';
 import { fetchMe, login } from '@/utils/api';
@@ -18,16 +18,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -140,7 +140,7 @@ export default function LoginScreen() {
 
             <Pressable
               onPress={() => router.push('/(auth)/forgot-password')}
-              style={styles.forgotLink}
+              style={({ pressed }) => [styles.forgotLink, pressed && { opacity: 0.8 }]}
               accessibilityLabel="Forgot password?"
               accessibilityRole="link"
             >
@@ -148,9 +148,10 @@ export default function LoginScreen() {
             </Pressable>
 
             <Pressable
-              style={[
+              style={({ pressed }) => [
                 styles.button,
                 (!canSubmit || submitting) && styles.buttonDisabled,
+                canSubmit && !submitting && pressed && { opacity: 0.8 },
               ]}
               onPress={handleSubmit}
               disabled={!canSubmit || submitting}

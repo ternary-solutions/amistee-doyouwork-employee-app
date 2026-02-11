@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/Button';
 import { scheduleService } from '@/services/schedules';
 import type { MyScheduleResponse } from '@/types/schedules';
 import { getMediaUrl } from '@/utils/api';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
   accent,
   accentForeground,
   background,
+  border,
   foreground,
   muted,
   mutedForeground,
@@ -23,6 +25,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -50,6 +53,7 @@ export default function DashboardScreen() {
       setSchedules(res.filter((s) => s && s.vehicle !== undefined));
     } catch (error) {
       console.error('Failed to load schedules', error);
+      Alert.alert('Error', getErrorMessage(error, 'Failed to load schedule. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +67,7 @@ export default function DashboardScreen() {
     <View style={styles.container}>
       <DashboardHero selectedDate={selectedDate} onMenuClick={openDrawer} />
       <ScrollView
-        style={styles.scroll}
+        style={[styles.scroll, { backgroundColor: background }]}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
@@ -133,7 +137,7 @@ export default function DashboardScreen() {
                         !schedule.notes && styles.notesPlaceholder,
                       ]}
                     >
-                      {schedule.notes || 'Add notes for the day...'}
+                      {schedule.notes || 'No notes'}
                     </Text>
                   </View>
                 </Card>
@@ -242,7 +246,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: muted,
+    backgroundColor: border,
     alignItems: 'center',
     justifyContent: 'center',
   },

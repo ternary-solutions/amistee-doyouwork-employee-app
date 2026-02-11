@@ -1,4 +1,5 @@
 import {
+  background,
   border,
   card,
   destructive,
@@ -24,7 +25,6 @@ import {
 
 export default function NotificationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   const [notification, setNotification] = useState<Notification | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export default function NotificationDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={[styles.container, { backgroundColor: background }]} contentContainerStyle={styles.content}>
       <View style={styles.card}>
         <Text style={styles.type}>{notification.notification_type?.name || 'Notification'}</Text>
         <Text style={styles.message}>{notification.message}</Text>

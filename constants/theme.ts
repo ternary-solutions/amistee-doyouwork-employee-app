@@ -37,6 +37,19 @@ export const warningForeground = '#ffffff';
 /** Primary gradient bottom (darker blue for hero) */
 export const primaryDark = '#0a3d75';
 
+/** Status badge backgrounds and text (e.g. Pending, Approved, Denied) */
+export const statusPendingBg = '#fef3c7';
+export const statusPendingText = '#92400e';
+export const statusApprovedBg = '#dcfce7';
+export const statusApprovedText = '#166534';
+export const statusDeniedBg = '#fee2e2';
+export const statusDeniedText = '#991b1b';
+export const statusBadge = {
+  Pending: { bg: statusPendingBg, text: statusPendingText },
+  Approved: { bg: statusApprovedBg, text: statusApprovedText },
+  Denied: { bg: statusDeniedBg, text: statusDeniedText },
+} as const;
+
 /** All semantic colors in one object for StyleSheet */
 export const semanticColors = {
   primary,

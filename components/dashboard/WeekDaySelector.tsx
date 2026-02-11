@@ -1,16 +1,17 @@
-import {
-  accent,
-  accentForeground,
-  border,
-  card,
-  foreground,
-  radius,
-  spacing,
-} from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
-import { addDays, format, isSameDay, startOfWeek, subDays } from 'date-fns';
+import {
+    accent,
+    accentForeground,
+    border,
+    card,
+    foreground,
+    radius,
+    spacing,
+} from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { addDays, format, isSameDay, startOfWeek, subDays } from 'date-fns';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface WeekDaySelectorProps {
   selectedDate: Date;
@@ -21,20 +22,22 @@ export function WeekDaySelector({
   selectedDate,
   onDateChange,
 }: WeekDaySelectorProps) {
+  const insets = useSafeAreaInsets();
   const today = new Date();
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const horizontalPadding = Math.max(spacing.lg, spacing.base + Math.max(insets.left, insets.right));
 
   const goToPrevWeek = () => onDateChange(subDays(selectedDate, 7));
   const goToNextWeek = () => onDateChange(addDays(selectedDate, 7));
   const goToToday = () => onDateChange(today);
-  const isViewingCurrentWeek = isSameDay(selectedDate, today);
+  const isTodaySelected = isSameDay(selectedDate, today);
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { paddingHorizontal: horizontalPadding }]}>
       <View style={styles.todayRow}>
         <Button
-          variant={isViewingCurrentWeek ? 'accent' : 'outline'}
+          variant={isTodaySelected ? 'accent' : 'outline'}
           size="sm"
           pill
           onPress={goToToday}
@@ -105,7 +108,6 @@ export function WeekDaySelector({
 const styles = StyleSheet.create({
   wrapper: {
     marginTop: -24,
-    paddingHorizontal: spacing.base,
     marginBottom: spacing.sm,
   },
   todayRow: {
@@ -113,15 +115,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   arrows: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 0,
   },
   arrowBtn: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },

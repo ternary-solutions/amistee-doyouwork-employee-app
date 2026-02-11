@@ -1,30 +1,30 @@
 import {
-  border,
-  card,
-  destructive,
-  foreground,
-  muted,
-  mutedForeground,
-  primary,
-  primaryDark,
-  primaryForeground,
-  radius,
-  spacing,
-  typography,
+    border,
+    card,
+    destructive,
+    foreground,
+    muted,
+    mutedForeground,
+    primary,
+    primaryDark,
+    primaryForeground,
+    radius,
+    spacing,
+    typography,
 } from '@/constants/theme';
 import { authService } from '@/services/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -139,7 +139,7 @@ export default function ForgotPasswordScreen() {
           <View style={styles.card}>
             <Pressable
               onPress={() => router.back()}
-              style={styles.backLink}
+              style={({ pressed }) => [styles.backLink, pressed && { opacity: 0.8 }]}
               accessibilityLabel="Back to login"
               accessibilityRole="link"
             >

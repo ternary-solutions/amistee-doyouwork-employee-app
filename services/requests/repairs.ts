@@ -1,7 +1,9 @@
 import type {
-  RepairRequest,
-  RepairRequestCreate,
-  RepairRequestList,
+    RepairRequest,
+    RepairRequestComment,
+    RepairRequestCommentCreate,
+    RepairRequestCreate,
+    RepairRequestList,
 } from '@/types/requests/repairs';
 import { apiRequest } from '@/utils/api';
 
@@ -30,6 +32,27 @@ export const repairRequestsService = {
   async create(data: RepairRequestCreate): Promise<RepairRequest> {
     return apiRequest<RepairRequestCreate, RepairRequest>(
       'repair-requests/',
+      { method: 'POST', data },
+      true,
+      true
+    );
+  },
+
+  async getComments(repairId: string): Promise<RepairRequestComment[]> {
+    return apiRequest<unknown, RepairRequestComment[]>(
+      `repair-requests/${repairId}/comments`,
+      { method: 'GET' },
+      true,
+      true
+    );
+  },
+
+  async createComment(
+    repairId: string,
+    data: RepairRequestCommentCreate
+  ): Promise<RepairRequestComment> {
+    return apiRequest<RepairRequestCommentCreate, RepairRequestComment>(
+      `repair-requests/${repairId}/comments`,
       { method: 'POST', data },
       true,
       true

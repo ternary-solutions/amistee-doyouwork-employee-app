@@ -6,31 +6,36 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppInitializer } from '@/components/AppInitializer';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { PushNotificationSetup } from '@/components/PushNotificationSetup';
 
 const queryClient = new QueryClient();
 
+// Main entry is (app)/dashboard via index redirect. (tabs) and modal are for direct/deep links only.
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: '(app)',
 };
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider value={DefaultTheme}>
-          <AppInitializer />
-          <PushNotificationSetup />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(app)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </Stack>
-          <StatusBar style="dark" />
-        </ThemeProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider value={DefaultTheme}>
+            <AppInitializer />
+            <PushNotificationSetup />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(app)" />
+              {/* (tabs) and modal: for direct/deep links only; normal flow is drawer via (app) */}
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            </Stack>
+            <StatusBar style="dark" />
+          </ThemeProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
